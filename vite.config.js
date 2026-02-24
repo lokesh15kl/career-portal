@@ -3,7 +3,10 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: "/career-assignment/",   // 👈 ADD THIS LINE
+
   plugins: [react()],
+
   server: {
     proxy: {
       '/api': {
