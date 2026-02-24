@@ -11,6 +11,10 @@ services:
         value: "17"
       - key: FRONTEND_ORIGINS
         value: "https://lokesh15kl.github.io"
+      - key: SESSION_COOKIE_SAMESITE
+        value: "None"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: SMTP_USERNAME
         sync: false
       - key: SMTP_PASSWORD
