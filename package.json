@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
 
-  "homepage": "https://lokesh15kl.github.io/career-assignment",
+  "homepage": "https://lokesh15kl.github.io/career-portal",
 
   "scripts": {
     "dev": "vite",

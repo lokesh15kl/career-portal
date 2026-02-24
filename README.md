@@ -1,23 +1,41 @@
-# Career Assessment Frontend
+# Career Portal - Assessment Platform
 
-Frontend application for a career guidance and assessment platform with role-based access for users and admins.
+A full-stack career assessment platform with AI-powered quiz generation, role-based access, and comprehensive analytics.
 
-## Project Specifications
+## Features
 
-### Product Goals
-- Help users evaluate strengths through guided quizzes.
-- Recommend suitable career paths and show progress over time.
-- Provide admin workflows for oversight and analytics.
+- ✨ **Interactive Quizzes**: Multiple assessment types (MCQ, written, audio)
+- 🤖 **AI Quiz Generation**: Auto-generate quizzes using HuggingFace API
+- 👤 **Role-Based Access**: Separate user and admin portals with protected routes
+- 📊 **Analytics Dashboard**: Track user progress and assessments
+- 🎨 **Neon UI Design**: Modern, animated dark/light theme
+- 🌓 **Theme Toggle**: Global light/dark mode support
+- 🎯 **Career Recommendations**: Personalized career path suggestions
+- ⚡ **Fast Development**: React 19 + Vite with hot reload
+- 🔐 **Secure Auth**: Session-based authentication with captcha
 
-### User Roles
-- USER:
-	- Access quiz, dashboard, career explorer, and results views.
-	- Track personal progress and recommendations.
-- ADMIN:
-	- Access admin portal and analytics views.
-	- Monitor platform-level data and user outcomes.
+## Tech Stack
 
-### Functional Scope
+### Frontend
+- React 19
+- Vite 8 (build tool)
+- React Router v7 (navigation)
+- CSS3 with custom animations
+
+### Backend
+- Spring Boot 4.0.2
+- Spring Data JPA
+- MySQL 8.0
+- Spring Mail (Gmail SMTP)
+- HuggingFace API integration
+
+### Deployment
+- **Frontend**: GitHub Pages
+- **Backend**: Render
+- **Database**: MySQL on Render
+- **CI/CD**: GitHub Actions
+
+## Deployment Scope
 - Authentication screens: login and signup.
 - Route protection via role-aware guards.
 - User journey pages:
