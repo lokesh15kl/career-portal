@@ -5,8 +5,9 @@ on:
     branches:
       - master
     paths:
-      - 'frontend/**'
+      - 'src/**'
       - 'package.json'
+      - 'vite.config.js'
       - '.github/workflows/deploy.yml'
 
 jobs:
