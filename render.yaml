@@ -1,11 +1,9 @@
 services:
   - type: web
     name: career-portal-backend
-    env: java
+    env: docker
     rootDir: backend
     plan: free
-    buildCommand: ./mvnw clean package -DskipTests
-    startCommand: java -Dserver.port=$PORT -jar target/full-project-0.0.1-SNAPSHOT.jar
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
