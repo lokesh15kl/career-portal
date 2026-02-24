@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+    <script>
+      (function () {
+        var base = "/career-assignment";
+        var path = window.location.pathname;
+        var search = window.location.search || "";
+        var hash = window.location.hash || "";
+        var trimmed = path.startsWith(base) ? path.slice(base.length) : path;
+        var next = base + "/?redirect=" + encodeURIComponent(trimmed + search + hash);
+        window.location.replace(next);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
