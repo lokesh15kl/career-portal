@@ -6,6 +6,8 @@ services:
     plan: free
     autoDeploy: true
     envVars:
+      - key: JDBC_DATABASE_URL
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_USERNAME

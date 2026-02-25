@@ -15,6 +15,11 @@ const CATEGORY_ICON = {
 
 const PAGE_SIZE = 4;
 
+function withBase(path) {
+  const base = import.meta.env.BASE_URL || "/";
+  return `${base}${String(path).replace(/^\/+/, "")}`;
+}
+
 export default function CareerExplorer() {
   const navigate = useNavigate();
   const [careers, setCareers] = useState([]);
@@ -116,8 +121,8 @@ export default function CareerExplorer() {
         <p className="career-subtitle">Explore clean career pathways based on interest, skill, and aptitude.</p>
 
         <div className="career-hero" role="img" aria-label="Career growth illustration banner">
-          <img src="/career-banner.svg" alt="Career growth banner" className="career-hero-image" />
-          <img src="/career-icons.svg" alt="Career icon set" className="career-hero-icons" />
+          <img src={withBase("career-banner.svg")} alt="Career growth banner" className="career-hero-image" />
+          <img src={withBase("career-icons.svg")} alt="Career icon set" className="career-hero-icons" />
           <div className="career-hero-copy">
             <p>Curated paths for learners and job-ready candidates</p>
             <small>Use filters and pagination to quickly navigate role options.</small>

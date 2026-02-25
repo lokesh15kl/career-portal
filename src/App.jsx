@@ -134,13 +134,15 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const routerBase = (import.meta.env.BASE_URL || "/").replace(/\/$/, "") || "/";
+
   useEffect(() => {
     applyTheme(getPreferredTheme());
     applyMotion(getPreferredMotion());
   }, []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBase}>
       <CustomCursor />
       <AppRoutes />
     </BrowserRouter>

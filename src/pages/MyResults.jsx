@@ -16,6 +16,11 @@ const CATEGORY_ICON = {
 
 const PAGE_SIZE = 4;
 
+function withBase(path) {
+  const base = import.meta.env.BASE_URL || "/";
+  return `${base}${String(path).replace(/^\/+/, "")}`;
+}
+
 export default function MyResults() {
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState(() => {
@@ -78,8 +83,8 @@ export default function MyResults() {
         </div>
 
         <div className="results-hero" role="img" aria-label="Results dashboard visuals">
-          <img src="/career-banner.svg" alt="Progress chart banner" className="results-hero-image" />
-          <img src="/career-icons.svg" alt="Career indicator icons" className="results-hero-icons" />
+          <img src={withBase("career-banner.svg")} alt="Progress chart banner" className="results-hero-image" />
+          <img src={withBase("career-icons.svg")} alt="Career indicator icons" className="results-hero-icons" />
           <div className="results-hero-copy">
             <p>Track performance history and recommendations over time</p>
             <small>Use page controls to browse your full assessment timeline.</small>

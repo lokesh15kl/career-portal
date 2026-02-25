@@ -4,6 +4,11 @@ import { getCurrentUser, logout } from "../services/api";
 import { getRole, isLoggedIn, setLoggedIn, setRole } from "../services/auth";
 import PaginationControls from "../components/PaginationControls";
 
+function withBase(path) {
+  const base = import.meta.env.BASE_URL || "/";
+  return `${base}${String(path).replace(/^\/+/, "")}`;
+}
+
 export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -11,18 +16,18 @@ export default function Home() {
 
   const videoTopics = useMemo(
     () => [
-      { title: "AI Career Paths", tag: "ai", image: "/video-cards/ai.svg" },
-      { title: "Data Science", tag: "data", image: "/video-cards/data.svg" },
-      { title: "Full Stack", tag: "stack", image: "/video-cards/stack.svg" },
-      { title: "Cybersecurity", tag: "security", image: "/video-cards/security.svg" },
-      { title: "Cloud Engineering", tag: "cloud", image: "/video-cards/cloud.svg" },
-      { title: "UX Design", tag: "ux", image: "/video-cards/ux.svg" },
-      { title: "Product Strategy", tag: "product", image: "/video-cards/product.svg" },
-      { title: "DevOps", tag: "devops", image: "/video-cards/devops.svg" },
-      { title: "Mobile Development", tag: "mobile", image: "/video-cards/mobile.svg" },
-      { title: "QA Automation", tag: "qa", image: "/video-cards/qa.svg" },
-      { title: "Business Analysis", tag: "business", image: "/video-cards/business.svg" },
-      { title: "Digital Marketing", tag: "marketing", image: "/video-cards/marketing.svg" }
+      { title: "AI Career Paths", tag: "ai", image: withBase("video-cards/ai.svg") },
+      { title: "Data Science", tag: "data", image: withBase("video-cards/data.svg") },
+      { title: "Full Stack", tag: "stack", image: withBase("video-cards/stack.svg") },
+      { title: "Cybersecurity", tag: "security", image: withBase("video-cards/security.svg") },
+      { title: "Cloud Engineering", tag: "cloud", image: withBase("video-cards/cloud.svg") },
+      { title: "UX Design", tag: "ux", image: withBase("video-cards/ux.svg") },
+      { title: "Product Strategy", tag: "product", image: withBase("video-cards/product.svg") },
+      { title: "DevOps", tag: "devops", image: withBase("video-cards/devops.svg") },
+      { title: "Mobile Development", tag: "mobile", image: withBase("video-cards/mobile.svg") },
+      { title: "QA Automation", tag: "qa", image: withBase("video-cards/qa.svg") },
+      { title: "Business Analysis", tag: "business", image: withBase("video-cards/business.svg") },
+      { title: "Digital Marketing", tag: "marketing", image: withBase("video-cards/marketing.svg") }
     ],
     []
   );
@@ -122,7 +127,15 @@ export default function Home() {
           <div className="home-video-grid">
             {visibleVideos.map((video) => (
               <article key={video.title} className={`home-video-card theme-${video.tag}`}>
-                <img className="home-video-img" src={video.image} alt="" loading="lazy" />
+                <img
+                  className="home-video-img"
+                  src={video.image}
+                  alt=""
+                  loading="lazy"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
                 <div className="home-video-overlay" />
                 <span className="home-video-badge">Quiz</span>
                 <h3 className="home-video-topic">{video.title}</h3>

@@ -4285,6 +4285,10 @@ body,
   border-left-color: color-mix(in srgb, var(--accent) 62%, var(--primary)) !important;
 }
 
+[data-theme="light"] .home-video-card[class*="theme-"] {
+  background: var(--video-bg, linear-gradient(135deg, #3358ff, #52b6ff)) !important;
+}
+
 /* Final polish: typography + spacing consistency */
 :is(
   .student-page-title,

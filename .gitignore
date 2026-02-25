@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / environment files
+.env
+.env.*
+!.env*.example
+backend/.env
+backend/.env.*
+!backend/.env*.example
+*.pem
+*.key
+*.p12

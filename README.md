@@ -73,6 +73,43 @@ npm run dev
 npm run build
 ```
 
+## Deployment (GitHub Pages + Spring Boot Backend)
+
+If images are missing after deploy or login shows "Backend offline", verify these points:
+
+1. Frontend repo base path
+- This project is configured for GitHub Pages at `/career-portal/`.
+- Ensure your GitHub Pages URL is `https://lokesh15kl.github.io/career-portal/`.
+
+2. Frontend API base URL
+- Create `.env.production` from `.env.production.example` and set:
+```bash
+VITE_API_BASE_URL=https://your-backend-domain.com
+```
+- Rebuild and redeploy frontend after setting this.
+
+3. Backend CORS for deployed frontend
+- Set backend env var `CORS_ALLOWED_ORIGINS` to include your frontend origin, for example:
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://lokesh15kl.github.io
+```
+
+4. Session cookies across origins
+- If frontend and backend are on different domains and you use session cookies, set:
+```bash
+SESSION_COOKIE_SAME_SITE=None
+SESSION_COOKIE_SECURE=true
+```
+- Keep local development as `Lax` and `false`.
+
+5. Backend database URL on Render
+- Set `JDBC_DATABASE_URL` to a JDBC value (must start with `jdbc:`), for example:
+```bash
+JDBC_DATABASE_URL=jdbc:postgresql://<HOST>:5432/<DB>?sslmode=require
+```
+- Set `DATABASE_USERNAME` and `DATABASE_PASSWORD` to match the DB credentials.
+- `DATABASE_URL` is supported only as a fallback; prefer `JDBC_DATABASE_URL` for reliable startup.
+
 ### Preview Production Build
 ```bash
 npm run preview
