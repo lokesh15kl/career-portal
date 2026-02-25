@@ -16,8 +16,22 @@ public class FullProjectApplication {
     }
 
     private static void normalizeDatabaseUrl() {
+        String jdbcUrl = sanitizeUrl(System.getenv("JDBC_DATABASE_URL"));
+        if (jdbcUrl != null && !jdbcUrl.isBlank()) {
+            normalizeAndApply(jdbcUrl);
+            return;
+        }
+
         String rawUrl = sanitizeUrl(System.getenv("DATABASE_URL"));
-        if (rawUrl == null || rawUrl.isBlank() || startsWithIgnoreCase(rawUrl, "jdbc:")) {
+        if (rawUrl != null && !rawUrl.isBlank()) {
+            normalizeAndApply(rawUrl);
+        }
+    }
+
+    private static void normalizeAndApply(String rawUrl) {
+        if (startsWithIgnoreCase(rawUrl, "jdbc:")) {
+            System.setProperty("spring.datasource.url", rawUrl);
+            applyDriverAndDialectForJdbc(rawUrl);
             return;
         }
 
@@ -51,6 +65,19 @@ public class FullProjectApplication {
         return value.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
+    private static void applyDriverAndDialectForJdbc(String jdbcUrl) {
+        if (startsWithIgnoreCase(jdbcUrl, "jdbc:postgresql:")) {
+            System.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
+            System.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.PostgreSQLDialect");
+            return;
+        }
+
+        if (startsWithIgnoreCase(jdbcUrl, "jdbc:mysql:")) {
+            System.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+            System.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
+        }
+    }
+
     private static void applyJdbcProperties(String rawUrl, String driverType) {
         try {
             URI uri = URI.create(rawUrl);
@@ -76,7 +103,9 @@ public class FullProjectApplication {
                 jdbcUrlBuilder.append('?').append(uri.getQuery());
             }
 
-            System.setProperty("spring.datasource.url", jdbcUrlBuilder.toString());
+            String jdbcUrl = jdbcUrlBuilder.toString();
+            System.setProperty("spring.datasource.url", jdbcUrl);
+            applyDriverAndDialectForJdbc(jdbcUrl);
 
             String userInfo = uri.getUserInfo();
             if (userInfo != null && !userInfo.isBlank()) {
@@ -107,6 +136,7 @@ public class FullProjectApplication {
 
             if (convertedUrl != null && !convertedUrl.isBlank()) {
                 System.setProperty("spring.datasource.url", convertedUrl);
+                applyDriverAndDialectForJdbc(convertedUrl);
             }
         }
     }
