@@ -1,18 +1,40 @@
 package com.example.full.project.controller;
 
-import com.example.full.project.entity.User;
-import com.example.full.project.repository.UserRepository;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.example.full.project.entity.User;
+import com.example.full.project.repository.UserRepository;
+
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @Controller
 public class PageController {
+
+    private static final long CAPTCHA_TTL_MILLIS = 5 * 60 * 1000;
+    private final Map<String, CaptchaChallenge> captchaChallenges = new ConcurrentHashMap<>();
+
+    private static class CaptchaChallenge {
+        private final String captcha;
+        private final long expiresAt;
+
+        private CaptchaChallenge(String captcha, long expiresAt) {
+            this.captcha = captcha;
+            this.expiresAt = expiresAt;
+        }
+    }
 
     @Autowired
     private UserRepository userRepo;
@@ -28,6 +50,11 @@ public class PageController {
             captcha.append(chars.charAt(random.nextInt(chars.length())));
         }
         return captcha.toString();
+    }
+
+    private void purgeExpiredCaptchaChallenges() {
+        long now = System.currentTimeMillis();
+        captchaChallenges.entrySet().removeIf(entry -> entry.getValue().expiresAt < now);
     }
 
     /* ================= PAGES ================= */
@@ -58,22 +85,50 @@ public class PageController {
     public String doLogin(@RequestParam("email") String email,
                           @RequestParam("password") String password,
                           @RequestParam("captcha") String captcha,
+                          @RequestParam(value = "captchaId", required = false) String captchaId,
                           HttpSession session,
                           Model model) {
 
-        String sessionCaptcha = (String) session.getAttribute("captcha");
+        String normalizedEmail = email == null ? "" : email.trim();
+        String normalizedPassword = password == null ? "" : password.trim();
+        String normalizedCaptcha = captcha == null ? "" : captcha.trim();
 
-        if (sessionCaptcha == null || !sessionCaptcha.equalsIgnoreCase(captcha)) {
+        purgeExpiredCaptchaChallenges();
+        boolean captchaValid = false;
+
+        if (captchaId != null && !captchaId.isBlank()) {
+            CaptchaChallenge challenge = captchaChallenges.remove(captchaId);
+            if (challenge != null && challenge.expiresAt >= System.currentTimeMillis()) {
+                captchaValid = challenge.captcha.equalsIgnoreCase(normalizedCaptcha);
+            }
+        }
+
+        if (!captchaValid) {
+            String sessionCaptcha = (String) session.getAttribute("captcha");
+            captchaValid = sessionCaptcha != null && sessionCaptcha.equalsIgnoreCase(normalizedCaptcha);
+        }
+
+        if (!captchaValid) {
             model.addAttribute("captchaError", "Invalid captcha");
             model.addAttribute("captchaText", generateCaptcha());
             session.setAttribute("captcha", model.getAttribute("captchaText"));
             return "login";
         }
 
-        User user = userRepo.findByEmail(email);
+        User user = userRepo.findByEmailIgnoreCase(normalizedEmail);
 
-        if (user == null || !user.getPassword().equals(password)) {
-            model.addAttribute("error", "Invalid credentials");
+        if (user == null) {
+            model.addAttribute("error", "Email not found");
+
+            String newCaptcha = generateCaptcha();
+            session.setAttribute("captcha", newCaptcha);
+            model.addAttribute("captchaText", newCaptcha);
+
+            return "login";
+        }
+
+        if (!user.getPassword().equals(normalizedPassword)) {
+            model.addAttribute("error", "Wrong password");
 
             String newCaptcha = generateCaptcha();
             session.setAttribute("captcha", newCaptcha);
@@ -108,10 +163,15 @@ public class PageController {
     }
     @GetMapping("/api/captcha")
     @ResponseBody
-    public String getCaptcha(HttpSession session) {
+    public Map<String, String> getCaptcha(HttpSession session) {
+        purgeExpiredCaptchaChallenges();
         String captcha = generateCaptcha();
+        String captchaId = UUID.randomUUID().toString();
+
         session.setAttribute("captcha", captcha);
-        return captcha;
+        captchaChallenges.put(captchaId, new CaptchaChallenge(captcha, System.currentTimeMillis() + CAPTCHA_TTL_MILLIS));
+
+        return Map.of("captcha", captcha, "captchaId", captchaId);
     }
 
 

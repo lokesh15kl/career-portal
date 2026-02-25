@@ -11,6 +11,7 @@ export default function Login() {
   const [checking, setChecking] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
   const [captcha, setCaptcha] = useState("");
+  const [captchaId, setCaptchaId] = useState("");
   const [error, setError] = useState("");
 
   const checkBackend = async () => {
@@ -36,8 +37,9 @@ export default function Login() {
 
     const loadCaptcha = async () => {
       try {
-        const value = await getCaptcha();
-        setCaptcha(value);
+        const challenge = await getCaptcha();
+        setCaptcha(challenge?.captcha || "");
+        setCaptchaId(challenge?.captchaId || "");
       } catch {
         setError("Could not load captcha. Please retry.");
       }
@@ -57,7 +59,18 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const loginResult = await loginWithCaptcha(form);
+      const normalizedInputCaptcha = String(form.captcha || "").trim().toUpperCase();
+      const normalizedShownCaptcha = String(captcha || "").trim().toUpperCase();
+
+      if (!normalizedInputCaptcha || normalizedInputCaptcha !== normalizedShownCaptcha) {
+        throw new Error("Invalid captcha");
+      }
+
+      const loginResult = await loginWithCaptcha({
+        ...form,
+        captcha: normalizedInputCaptcha,
+        captchaId
+      });
 
       let role = "";
       try {
@@ -106,7 +119,8 @@ export default function Login() {
 
       try {
         const refreshed = await getCaptcha();
-        setCaptcha(refreshed);
+        setCaptcha(refreshed?.captcha || "");
+        setCaptchaId(refreshed?.captchaId || "");
       } catch {
         // no-op
       }
@@ -167,7 +181,8 @@ export default function Login() {
               onClick={async () => {
                 try {
                   const refreshed = await getCaptcha();
-                  setCaptcha(refreshed);
+                  setCaptcha(refreshed?.captcha || "");
+                  setCaptchaId(refreshed?.captchaId || "");
                 } catch {
                   setError("Could not refresh captcha. Please retry.");
                 }

@@ -440,7 +440,7 @@ export async function getCaptcha() {
     const text = data.trim();
 
     if (!text) {
-      return "";
+      return { captcha: "", captchaId: "" };
     }
 
     if (text.startsWith("<")) {
@@ -448,33 +448,47 @@ export async function getCaptcha() {
         .replace(/<[^>]*>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-      return plainFromHtml;
+      return { captcha: plainFromHtml, captchaId: "" };
     }
 
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === "object") {
-        const value = String(
-          parsed.captcha ?? parsed.value ?? parsed.text ?? parsed.code ?? ""
-        ).trim();
-        return value;
+        return {
+          captcha: String(
+            parsed.captcha ?? parsed.value ?? parsed.text ?? parsed.code ?? ""
+          ).trim(),
+          captchaId: String(parsed.captchaId ?? parsed.id ?? "").trim()
+        };
       }
     } catch {
       // plain text captcha
     }
 
-    return text;
+    return { captcha: text, captchaId: "" };
   }
 
   if (data && typeof data === "object") {
-    return String(data.captcha ?? data.value ?? data.text ?? data.code ?? "").trim();
+    return {
+      captcha: String(data.captcha ?? data.value ?? data.text ?? data.code ?? "").trim(),
+      captchaId: String(data.captchaId ?? data.id ?? "").trim()
+    };
   }
 
-  return "";
+  return { captcha: "", captchaId: "" };
 }
 
-export async function loginWithCaptcha({ email, password, captcha }) {
-  const body = new URLSearchParams({ email, password, captcha }).toString();
+export async function loginWithCaptcha({ email, password, captcha, captchaId }) {
+  const params = new URLSearchParams();
+  params.append("email", email);
+  params.append("password", password);
+  params.append("captcha", captcha);
+
+  if (captchaId) {
+    params.append("captchaId", captchaId);
+  }
+
+  const body = params.toString();
 
   const response = await request("/doLogin", {
     method: "POST",
@@ -494,6 +508,14 @@ export async function loginWithCaptcha({ email, password, captcha }) {
 
   if (text.includes("Invalid captcha")) {
     throw new Error("Invalid captcha");
+  }
+
+  if (text.includes("Email not found")) {
+    throw new Error("Email not found");
+  }
+
+  if (text.includes("Wrong password")) {
+    throw new Error("Wrong password");
   }
 
   if (text.includes("Invalid credentials")) {
