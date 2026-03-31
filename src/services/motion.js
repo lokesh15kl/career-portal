@@ -22,6 +22,15 @@ export function applyMotion(motion) {
   const resolved = motion === "reduced" ? "reduced" : "normal";
   document.documentElement.setAttribute("data-motion", resolved);
   localStorage.setItem(MOTION_KEY, resolved);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("app:motion-change", {
+        detail: { motion: resolved }
+      })
+    );
+  }
+
   return resolved;
 }
 

@@ -71,13 +71,13 @@ export default function AdminAnalytics() {
           <div className="admin-avatar" aria-hidden="true">A</div>
           <div>
             <h1 className="admin-title">Admin Dashboard</h1>
-            <p className="admin-subtitle">Manage assessments and career data</p>
+            <p className="admin-subtitle">Track platform outcomes and learner performance</p>
           </div>
         </div>
 
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="admin-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="admin-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -92,8 +92,8 @@ export default function AdminAnalytics() {
         </nav>
 
         <section className="admin-section-head">
-          <h2 className="admin-section-title">Student Results & Analytics</h2>
-          <p className="admin-section-subtitle">Overview of all student assessment results</p>
+          <h2 className="admin-section-title">Student Results and Analytics</h2>
+          <p className="admin-section-subtitle">Live overview of attempts, score quality, and top activity</p>
         </section>
 
         {loading ? <p className="admin-analytics-note">Loading analytics...</p> : null}
@@ -117,8 +117,8 @@ export default function AdminAnalytics() {
             <div className="admin-analytics-grid">
               <section className="admin-analytics-card">
                 <h3 className="admin-analytics-title">Assessment Completions</h3>
-                <p className="admin-analytics-subtitle">Number of students who completed each assessment</p>
-                {categoryAttempts.length === 0 ? <p className="admin-analytics-note">No data</p> : null}
+                <p className="admin-analytics-subtitle">Attempt volume by assessment category</p>
+                {categoryAttempts.length === 0 ? <p className="admin-analytics-note">No attempt data available yet.</p> : null}
                 {categoryAttempts.map(([category, count]) => (
                   <div key={category} className="admin-analytics-row-item">
                     <div className="admin-analytics-row-left">
@@ -137,8 +137,8 @@ export default function AdminAnalytics() {
 
               <section className="admin-analytics-card">
                 <h3 className="admin-analytics-title">Score Distribution</h3>
-                <p className="admin-analytics-subtitle">Distribution of student scores across all assessments</p>
-                {categoryAverages.length === 0 ? <p className="admin-analytics-note">No data</p> : null}
+                <p className="admin-analytics-subtitle">Average score trend by category</p>
+                {categoryAverages.length === 0 ? <p className="admin-analytics-note">No score trend data available yet.</p> : null}
                 {categoryAverages.map(([category, avg]) => (
                   <div key={category} className="admin-analytics-row-item">
                     <div className="admin-analytics-row-left">
@@ -157,8 +157,8 @@ export default function AdminAnalytics() {
 
               <section className="admin-analytics-card admin-analytics-card-wide">
                 <h3 className="admin-analytics-title">Recent Assessment Results</h3>
-                <p className="admin-analytics-subtitle">Latest student submissions</p>
-                {topUsers.length === 0 ? <p className="admin-analytics-note">No assessment results yet</p> : null}
+                <p className="admin-analytics-subtitle">Most active learners by submission count</p>
+                {topUsers.length === 0 ? <p className="admin-analytics-note">No submissions recorded yet.</p> : null}
                 {topUsers.map(([email, count]) => (
                   <div key={email} className="admin-analytics-row-item">
                     <span className="admin-analytics-email">{email}</span>

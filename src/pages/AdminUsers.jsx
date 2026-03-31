@@ -84,13 +84,13 @@ export default function AdminUsers() {
           <div className="admin-avatar" aria-hidden="true">A</div>
           <div>
             <h1 className="admin-title">User Management</h1>
-            <p className="admin-subtitle">Grant admin access to existing users</p>
+            <p className="admin-subtitle">Manage role elevation for existing platform users</p>
           </div>
         </div>
 
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="admin-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="admin-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -106,7 +106,7 @@ export default function AdminUsers() {
 
         <section className="admin-section-head">
           <h2 className="admin-section-title">Promote User</h2>
-          <p className="admin-section-subtitle">Enter an email or username and grant admin role.</p>
+          <p className="admin-section-subtitle">Enter a valid identifier to grant administrator access.</p>
         </section>
 
         <section className="admin-careers-card">
@@ -136,12 +136,12 @@ export default function AdminUsers() {
             <div className="admin-careers-form-actions">
               <h3 className="admin-careers-list-title">Candidate Emails</h3>
               <button type="button" className="admin-careers-secondary-btn" onClick={onLoadCandidates} disabled={loadingCandidates}>
-                {loadingCandidates ? "Loading..." : "Load from Scores"}
+                {loadingCandidates ? "Loading..." : "Load from Score History"}
               </button>
             </div>
 
             {uniqueCandidates.length === 0 ? (
-              <p className="admin-careers-meta">No candidate list loaded yet.</p>
+              <p className="admin-careers-meta">No candidate list loaded yet. Fetch users from score history to begin.</p>
             ) : (
               <div className="admin-careers-sections-grid">
                 {uniqueCandidates.map((email) => (

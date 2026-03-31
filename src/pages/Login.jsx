@@ -81,7 +81,7 @@ export default function Login() {
 
         role = normalizeRole(currentUser?.role || currentUser?.userRole || roleFromAuthorities || loginResult?.role);
       } catch {
-        throw new Error("Login succeeded but session verification failed. Please login again.");
+        role = normalizeRole(loginResult?.role);
       }
 
       if (!role) {

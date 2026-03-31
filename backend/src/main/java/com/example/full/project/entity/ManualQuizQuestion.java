@@ -1,48 +1,57 @@
 package com.example.full.project.entity;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "quiz")
-public class Quiz {
+@Table(name = "manual_quiz_questions")
+public class ManualQuizQuestion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Personality / Aptitude / Technical etc.
-    @Column(nullable = false)
+    @Column(nullable = false, length = 150)
     private String category;
 
-    // Quiz1 / Quiz2 / Java Basics
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String quizTitle;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 1000)
     private String question;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
+    private String questionType;
+
+    @Column(nullable = false, length = 500)
     private String option1;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String option2;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String option3;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String option4;
 
+    @Column(nullable = false, length = 500)
+    private String answer;
+
     @Column(nullable = false)
-    private String correctAnswer;
+    private LocalDateTime createdAt;
 
-    @Column(nullable = true)
-    private String questionType; // mcq, written, audio
-
-    // REQUIRED BY JPA
-    public Quiz() {}
-
-    // ===== GETTERS & SETTERS =====
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     public Long getId() {
         return id;
@@ -74,6 +83,14 @@ public class Quiz {
 
     public void setQuestion(String question) {
         this.question = question;
+    }
+
+    public String getQuestionType() {
+        return questionType;
+    }
+
+    public void setQuestionType(String questionType) {
+        this.questionType = questionType;
     }
 
     public String getOption1() {
@@ -108,19 +125,19 @@ public class Quiz {
         this.option4 = option4;
     }
 
-    public String getCorrectAnswer() {
-        return correctAnswer;
+    public String getAnswer() {
+        return answer;
     }
 
-    public void setCorrectAnswer(String correctAnswer) {
-        this.correctAnswer = correctAnswer;
+    public void setAnswer(String answer) {
+        this.answer = answer;
     }
 
-    public String getQuestionType() {
-        return questionType != null ? questionType : "mcq";
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public void setQuestionType(String questionType) {
-        this.questionType = questionType;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

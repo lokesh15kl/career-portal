@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import QuizSelection from "./pages/QuizSelection";
 import Quiz from "./pages/Quiz";
 import AdminPortal from "./pages/AdminPortal";
 import AdminAnalytics from "./pages/AdminAnalytics";
@@ -13,6 +14,7 @@ import AdminCareers from "./pages/AdminCareers";
 import AdminScores from "./pages/AdminScores";
 import AdminUsers from "./pages/AdminUsers";
 import UserPortal from "./pages/UserPortal";
+import Profile from "./pages/Profile";
 import CareerExplorer from "./pages/CareerExplorer";
 import MyResults from "./pages/MyResults";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -20,6 +22,7 @@ import ThemeToggle from "./components/ThemeToggle";
 import CustomCursor from "./components/CustomCursor";
 import { applyTheme, getPreferredTheme } from "./services/theme";
 import { applyMotion, getPreferredMotion } from "./services/motion";
+import { resolveRuntimeBasePath } from "./services/basePath";
 
 function AppRoutes() {
   const location = useLocation();
@@ -53,6 +56,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={["USER"]}>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quiz-selection"
+          element={
+            <ProtectedRoute allowedRoles={["USER"]}>
+              <QuizSelection />
             </ProtectedRoute>
           }
         />
@@ -128,13 +139,21 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute allowedRoles={["USER"]}>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </>
   );
 }
 
 export default function App() {
-  const routerBase = (import.meta.env.BASE_URL || "/").replace(/\/$/, "") || "/";
+  const routerBase = resolveRuntimeBasePath();
 
   useEffect(() => {
     applyTheme(getPreferredTheme());

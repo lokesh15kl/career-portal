@@ -1,29 +1,11 @@
-package com.example.full.project.entity;
+package com.example.full.project.dto;
 
-import jakarta.persistence.*;
-
-@Entity
-@Table(name = "users")
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class RegisterRequest {
 
     private String name;
     private String email;
     private String password;
     private String role;
-
-    // GETTERS & SETTERS
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;

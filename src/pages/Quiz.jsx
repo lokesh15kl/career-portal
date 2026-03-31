@@ -5,6 +5,12 @@ import {
   submitQuiz,
   submitQuizWithTypedQuestions
 } from "../services/api";
+import {
+  attemptSafeExamBrowserLaunch,
+  buildSafeExamBrowserLaunchUrl,
+  createQuizKey,
+  isInsideSafeExamBrowser
+} from "../services/safeExamBrowser";
 import { getCareerRecommendations } from "../services/recommendations";
 import { saveAttempt } from "../services/userProgress";
 
@@ -12,8 +18,17 @@ export default function Quiz() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const category = location.state?.category || "";
-  const quizTitle = location.state?.quizTitle || "";
+  const params = new URLSearchParams(location.search);
+
+  const category = location.state?.category || params.get("category") || "";
+  const quizTitle = location.state?.quizTitle || params.get("quizTitle") || "";
+  const launchMode = String(location.state?.launchMode || params.get("mode") || "assessment").toLowerCase();
+  const isAiPracticeMode = launchMode === "practice";
+  const quizKey = useMemo(() => createQuizKey({ category, quizTitle }), [category, quizTitle]);
+  const insideSafeExamBrowser = isInsideSafeExamBrowser();
+  const shouldRequireSeb = !isAiPracticeMode
+    && String(import.meta.env.VITE_REQUIRE_SEB ?? "true").toLowerCase() !== "false";
+  const shouldBlockForSeb = shouldRequireSeb && !insideSafeExamBrowser;
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -24,17 +39,134 @@ export default function Quiz() {
   const [recommendations, setRecommendations] = useState([]);
   const [recordingByQuestion, setRecordingByQuestion] = useState({});
   const [audioResponses, setAudioResponses] = useState({});
+  const [showSebNotice, setShowSebNotice] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [isExamTerminated, setIsExamTerminated] = useState(false);
+  const [terminationReason, setTerminationReason] = useState("");
+
+  const terminateExam = (reason) => {
+    setIsExamTerminated(true);
+    setTerminationReason(reason || "Exam was terminated.");
+    setSubmitting(false);
+    setLoading(false);
+    setShowSebNotice(false);
+    setShowFullscreenPrompt(false);
+  };
+
+  const requestFullscreenMode = async () => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+
+    if (document.fullscreenElement) {
+      setShowFullscreenPrompt(false);
+      return true;
+    }
+
+    const rootElement = document.documentElement;
+    if (!rootElement?.requestFullscreen) {
+      setShowFullscreenPrompt(true);
+      return false;
+    }
+
+    try {
+      await rootElement.requestFullscreen();
+      setShowFullscreenPrompt(false);
+      return true;
+    } catch {
+      setShowFullscreenPrompt(true);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (!isAiPracticeMode) {
+      setShowFullscreenPrompt(false);
+      hadFullscreenRef.current = false;
+      return;
+    }
+
+    const syncFullscreenState = () => {
+      const inFullscreen = Boolean(document.fullscreenElement);
+
+      if (inFullscreen) {
+        hadFullscreenRef.current = true;
+        setShowFullscreenPrompt(false);
+        return;
+      }
+
+      setShowFullscreenPrompt(true);
+      if (hadFullscreenRef.current && !isExamTerminated && score === null) {
+        terminateExam("Exam terminated: Fullscreen mode was exited.");
+      }
+    };
+
+    syncFullscreenState();
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    requestFullscreenMode();
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+    };
+  }, [isAiPracticeMode, isExamTerminated, score]);
+
+  useEffect(() => {
+    if (isExamTerminated || score !== null) {
+      return;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      terminateExam("Exam terminated: Escape key was pressed.");
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [isExamTerminated, score]);
+
+  useEffect(() => {
+    if (!category || !quizTitle || insideSafeExamBrowser || isAiPracticeMode) {
+      setShowSebNotice(false);
+      return;
+    }
+
+    const launched = attemptSafeExamBrowserLaunch({
+      examUrl: window.location.href,
+      quizKey
+    });
+
+    setShowSebNotice(!launched);
+  }, [category, quizTitle, quizKey, insideSafeExamBrowser, isAiPracticeMode]);
 
   const mediaRecorderByQuestionRef = useRef({});
   const mediaStreamByQuestionRef = useRef({});
   const chunksByQuestionRef = useRef({});
   const audioResponsesRef = useRef({});
+  const hadFullscreenRef = useRef(false);
 
   useEffect(() => {
     const loadQuiz = async () => {
+      if (isExamTerminated) {
+        setQuestions([]);
+        setLoading(false);
+        return;
+      }
+
       if (!category || !quizTitle) {
         setError("Invalid quiz selection. Please go back to dashboard.");
         setLoading(false);
+        return;
+      }
+
+      if (shouldBlockForSeb) {
+        setLoading(false);
+        setQuestions([]);
         return;
       }
 
@@ -57,9 +189,46 @@ export default function Quiz() {
     };
 
     loadQuiz();
-  }, [category, quizTitle]);
+  }, [category, quizTitle, shouldBlockForSeb, isExamTerminated]);
 
   const totalQuestions = useMemo(() => questions.length, [questions]);
+
+  const reviewRows = useMemo(() => {
+    if (score === null) {
+      return [];
+    }
+
+    return questions.map((question, index) => {
+      const questionKey = `q${question.id}`;
+      const userAnswer = String(answers[questionKey] || "").trim();
+      const expectedAnswer = String(question.correctAnswer || "").trim();
+      const questionType = String(question.questionType || "mcq").toLowerCase();
+
+      const isCorrect = questionType === "audio"
+        ? userAnswer.length > 0 && userAnswer.toLowerCase().includes(expectedAnswer.toLowerCase())
+        : userAnswer.localeCompare(expectedAnswer, undefined, { sensitivity: "accent" }) === 0;
+
+      const explanation = questionType === "mcq"
+        ? `The correct option is "${expectedAnswer}" because it best matches the concept asked in this question.`
+        : `Your response is checked against the expected answer key: "${expectedAnswer}".`;
+
+      const improvement = isCorrect
+        ? "Great job. Keep practicing similar questions to improve speed and consistency."
+        : `Review this concept, understand why "${expectedAnswer}" is correct, then retry similar ${questionType.toUpperCase()} questions.`;
+
+      return {
+        id: question.id,
+        number: index + 1,
+        questionText: question.question,
+        questionType,
+        userAnswer: userAnswer || "(No answer)",
+        expectedAnswer: expectedAnswer || "(Not configured)",
+        isCorrect,
+        explanation,
+        improvement
+      };
+    });
+  }, [answers, questions, score]);
 
   const onSelectAnswer = (questionId, value) => {
     setAnswers((prev) => ({ ...prev, [`q${questionId}`]: value }));
@@ -242,6 +411,37 @@ export default function Quiz() {
   return (
     <div className="quiz-shell">
       <div className="quiz-card">
+        {showSebNotice ? (
+          <div className="quiz-seb-notice" role="status">
+            <p className="quiz-seb-notice-text">
+              This assessment is intended to run in Safe Exam Browser. If SEB did not open automatically,
+              use the button below.
+            </p>
+            <button
+              type="button"
+              className="quiz-seb-open-btn"
+              onClick={() => window.location.assign(buildSafeExamBrowserLaunchUrl(window.location.href))}
+            >
+              Open in Safe Exam Browser
+            </button>
+          </div>
+        ) : null}
+
+        {isAiPracticeMode && showFullscreenPrompt ? (
+          <div className="quiz-fullscreen-notice" role="status">
+            <p className="quiz-fullscreen-notice-text">
+              AI practice runs in fullscreen mode. If it is not fullscreen yet, use the button below.
+            </p>
+            <button
+              type="button"
+              className="quiz-fullscreen-open-btn"
+              onClick={requestFullscreenMode}
+            >
+              Open Full Screen
+            </button>
+          </div>
+        ) : null}
+
         <div className="quiz-header-row">
           <div>
             <h1 className="quiz-title">Assessment Quiz</h1>
@@ -251,9 +451,39 @@ export default function Quiz() {
           <Link to="/dashboard" className="quiz-back-link">Back</Link>
         </div>
 
-        {loading ? <p className="quiz-loading">Loading questions...</p> : null}
+        {isExamTerminated ? (
+          <div className="quiz-terminated-box" role="alert" aria-live="assertive">
+            <h2 className="quiz-terminated-title">Exam Closed</h2>
+            <p className="quiz-terminated-copy">{terminationReason}</p>
+            <button
+              type="button"
+              className="quiz-secondary-btn"
+              onClick={() => navigate("/dashboard", { replace: true })}
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        ) : null}
 
-        {!loading && questions.map((question, index) => (
+        {!isExamTerminated && shouldBlockForSeb ? (
+          <div className="quiz-seb-blocker" role="alert" aria-live="assertive">
+            <h2 className="quiz-seb-blocker-title">Safe Exam Browser Required</h2>
+            <p className="quiz-seb-blocker-copy">
+              This assessment is locked until opened inside Safe Exam Browser.
+            </p>
+            <button
+              type="button"
+              className="quiz-seb-open-btn"
+              onClick={() => window.location.assign(buildSafeExamBrowserLaunchUrl(window.location.href))}
+            >
+              Launch in Safe Exam Browser
+            </button>
+          </div>
+        ) : null}
+
+        {!isExamTerminated && loading ? <p className="quiz-loading">Loading questions...</p> : null}
+
+        {!isExamTerminated && !loading && !shouldBlockForSeb && questions.map((question, index) => (
           <div key={question.id} className="quiz-question-block">
             <p className="quiz-question-text">{index + 1}. {question.question}</p>
             {(question.questionType || "mcq") === "mcq" ? (
@@ -311,15 +541,15 @@ export default function Quiz() {
           </div>
         ))}
 
-        {error ? <p className="quiz-error">{error}</p> : null}
+        {!isExamTerminated && error ? <p className="quiz-error">{error}</p> : null}
 
-        {!loading && totalQuestions > 0 ? (
-          <button onClick={onSubmit} className="quiz-submit-btn" disabled={submitting || score !== null}>
+        {!isExamTerminated && !loading && !shouldBlockForSeb && totalQuestions > 0 ? (
+          <button type="button" onClick={onSubmit} className="quiz-submit-btn" disabled={submitting || score !== null}>
             {submitting ? "Submitting..." : "Submit Quiz"}
           </button>
         ) : null}
 
-        {score !== null ? (
+        {!isExamTerminated && !shouldBlockForSeb && score !== null ? (
           <div className="quiz-score-box">
             <h2 className="quiz-score-title">Your Score: {score} / {totalQuestions}</h2>
 
@@ -336,9 +566,51 @@ export default function Quiz() {
             ) : null}
 
             <div className="quiz-result-actions">
-              <button onClick={() => navigate("/results")} className="quiz-primary-btn">View My Results</button>
-              <button onClick={() => navigate("/careers")} className="quiz-secondary-btn">Explore Careers</button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/results", {
+                    state: {
+                      latestAttempt: {
+                        id: `${Date.now()}-view`,
+                        timestamp: Date.now(),
+                        category,
+                        quizTitle,
+                        score,
+                        totalQuestions,
+                        recommendations
+                      }
+                    }
+                  })
+                }
+                className="quiz-primary-btn"
+              >
+                View My Results
+              </button>
+              <button type="button" onClick={() => navigate("/careers")} className="quiz-secondary-btn">Explore Careers</button>
             </div>
+
+            {reviewRows.length > 0 ? (
+              <div className="quiz-recommendation-wrap" style={{ marginTop: "1rem" }}>
+                <p className="quiz-rec-title">Answer Review and Improvement Guide</p>
+                {reviewRows.map((item) => (
+                  <div
+                    key={item.id}
+                    className="quiz-rec-card"
+                    style={{ borderLeft: item.isCorrect ? "4px solid #22c55e" : "4px solid #ef4444" }}
+                  >
+                    <h4 className="quiz-rec-role">
+                      Q{item.number} ({item.questionType.toUpperCase()}) - {item.isCorrect ? "Correct" : "Needs Improvement"}
+                    </h4>
+                    <p className="quiz-rec-reason"><strong>Question:</strong> {item.questionText}</p>
+                    <p className="quiz-rec-reason"><strong>Your answer:</strong> {item.userAnswer}</p>
+                    <p className="quiz-rec-reason"><strong>Correct answer:</strong> {item.expectedAnswer}</p>
+                    <p className="quiz-rec-reason"><strong>Explanation:</strong> {item.explanation}</p>
+                    <p className="quiz-rec-reason"><strong>How to improve:</strong> {item.improvement}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

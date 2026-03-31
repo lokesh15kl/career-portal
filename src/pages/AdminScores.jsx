@@ -55,13 +55,13 @@ export default function AdminScores() {
           <div className="admin-avatar" aria-hidden="true">A</div>
           <div>
             <h1 className="admin-title">Scores</h1>
-            <p className="admin-subtitle">Review submitted assessment scores</p>
+            <p className="admin-subtitle">Review submitted attempts across all assessments</p>
           </div>
         </div>
 
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="admin-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="admin-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -77,7 +77,7 @@ export default function AdminScores() {
 
         <section className="admin-section-head">
           <h2 className="admin-section-title">All Score Records</h2>
-          <p className="admin-section-subtitle">Latest submitted attempts across categories and quizzes.</p>
+          <p className="admin-section-subtitle">Most recent assessment outcomes across categories and quizzes.</p>
         </section>
 
         {loading ? <p className="admin-analytics-note">Loading score records...</p> : null}
@@ -85,9 +85,9 @@ export default function AdminScores() {
 
         {!loading && !error ? (
           <section className="admin-careers-list-wrap">
-            <h3 className="admin-careers-list-title">Attempts</h3>
+            <h3 className="admin-careers-list-title">Recent Attempts</h3>
             {sortedRows.length === 0 ? (
-              <p className="admin-careers-meta">No score records found.</p>
+              <p className="admin-careers-meta">No score records are available yet.</p>
             ) : (
               <div className="admin-careers-profiles-grid">
                 {sortedRows.map((item, index) => (

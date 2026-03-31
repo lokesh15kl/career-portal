@@ -78,8 +78,9 @@ npm run build
 If images are missing after deploy or login shows "Backend offline", verify these points:
 
 1. Frontend repo base path
-- This project is configured for GitHub Pages at `/career-portal/`.
-- Ensure your GitHub Pages URL is `https://lokesh15kl.github.io/career-portal/`.
+- Base path is configurable via `VITE_BASE_PATH` (defaults to `/`).
+- For user/organization pages (`https://<user>.github.io`), keep `VITE_BASE_PATH=/`.
+- For project pages (`https://<user>.github.io/<repo>/`), set `VITE_BASE_PATH=/career-portal/` (or your repo name).
 
 2. Frontend API base URL
 - Create `.env.production` from `.env.production.example` and set:
@@ -109,6 +110,19 @@ JDBC_DATABASE_URL=jdbc:postgresql://<HOST>:5432/<DB>?sslmode=require
 ```
 - Set `DATABASE_USERNAME` and `DATABASE_PASSWORD` to match the DB credentials.
 - `DATABASE_URL` is supported only as a fallback; prefer `JDBC_DATABASE_URL` for reliable startup.
+
+6. OTP email (SMTP) setup
+- OTP sender uses Spring mail config from `backend/src/main/resources/application.properties`:
+```properties
+spring.mail.username=${SMTP_USERNAME:}
+spring.mail.password=${SMTP_PASSWORD:}
+```
+- Add your new email/app password in environment variables (or in `backend/.env.render.example` for template):
+```bash
+SMTP_USERNAME=your_new_email@gmail.com
+SMTP_PASSWORD=your_app_password
+```
+- Gmail note: use an App Password (not your normal Gmail login password).
 
 ### Preview Production Build
 ```bash

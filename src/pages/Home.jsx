@@ -3,11 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCurrentUser, logout } from "../services/api";
 import { getRole, isLoggedIn, setLoggedIn, setRole } from "../services/auth";
 import PaginationControls from "../components/PaginationControls";
-
-function withBase(path) {
-  const base = import.meta.env.BASE_URL || "/";
-  return `${base}${String(path).replace(/^\/+/, "")}`;
-}
+import { withResolvedBase } from "../services/basePath";
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -16,18 +12,18 @@ export default function Home() {
 
   const videoTopics = useMemo(
     () => [
-      { title: "AI Career Paths", tag: "ai", image: withBase("video-cards/ai.svg") },
-      { title: "Data Science", tag: "data", image: withBase("video-cards/data.svg") },
-      { title: "Full Stack", tag: "stack", image: withBase("video-cards/stack.svg") },
-      { title: "Cybersecurity", tag: "security", image: withBase("video-cards/security.svg") },
-      { title: "Cloud Engineering", tag: "cloud", image: withBase("video-cards/cloud.svg") },
-      { title: "UX Design", tag: "ux", image: withBase("video-cards/ux.svg") },
-      { title: "Product Strategy", tag: "product", image: withBase("video-cards/product.svg") },
-      { title: "DevOps", tag: "devops", image: withBase("video-cards/devops.svg") },
-      { title: "Mobile Development", tag: "mobile", image: withBase("video-cards/mobile.svg") },
-      { title: "QA Automation", tag: "qa", image: withBase("video-cards/qa.svg") },
-      { title: "Business Analysis", tag: "business", image: withBase("video-cards/business.svg") },
-      { title: "Digital Marketing", tag: "marketing", image: withBase("video-cards/marketing.svg") }
+      { title: "AI Career Paths", tag: "ai", image: withResolvedBase("video-cards/ai.svg") },
+      { title: "Data Science", tag: "data", image: withResolvedBase("video-cards/data.svg") },
+      { title: "Full Stack", tag: "stack", image: withResolvedBase("video-cards/stack.svg") },
+      { title: "Cybersecurity", tag: "security", image: withResolvedBase("video-cards/security.svg") },
+      { title: "Cloud Engineering", tag: "cloud", image: withResolvedBase("video-cards/cloud.svg") },
+      { title: "UX Design", tag: "ux", image: withResolvedBase("video-cards/ux.svg") },
+      { title: "Product Strategy", tag: "product", image: withResolvedBase("video-cards/product.svg") },
+      { title: "DevOps", tag: "devops", image: withResolvedBase("video-cards/devops.svg") },
+      { title: "Mobile Development", tag: "mobile", image: withResolvedBase("video-cards/mobile.svg") },
+      { title: "QA Automation", tag: "qa", image: withResolvedBase("video-cards/qa.svg") },
+      { title: "Business Analysis", tag: "business", image: withResolvedBase("video-cards/business.svg") },
+      { title: "Digital Marketing", tag: "marketing", image: withResolvedBase("video-cards/marketing.svg") }
     ],
     []
   );
@@ -90,7 +86,7 @@ export default function Home() {
         <p className="home-badge">Career Guidance Platform</p>
         <h1 className="home-title">Career Assessment Tool</h1>
         <p className="home-subtitle">
-          Discover your strengths, take guided quizzes, and explore career tracks that match your profile.
+          Discover your strengths, complete guided assessments, and explore career tracks that match your profile.
         </p>
 
         <section className="home-stats" aria-label="Platform highlights">
@@ -112,7 +108,7 @@ export default function Home() {
           <div className="home-video-header">
             <div>
               <h2 className="home-video-title">Topic Video Library</h2>
-              <p className="home-video-subtitle">Curated mini-guides to help you pick the right path.</p>
+              <p className="home-video-subtitle">Curated quick guides to help you choose the right learning path.</p>
             </div>
             <PaginationControls
               page={videoPage}
@@ -168,11 +164,11 @@ export default function Home() {
                 <button className="home-btn home-btn-portal">Go to User Portal</button>
               </Link>
             )}
-            <button onClick={onLogout} className="home-btn home-btn-danger">Logout</button>
+            <button type="button" onClick={onLogout} className="home-btn home-btn-danger">Logout</button>
           </section>
         )}
 
-        <p className="home-footnote">Built with React + Vite + Route Guards for secure workflow control.</p>
+        <p className="home-footnote">Built for guided growth with secure, role-based learning workflows.</p>
       </main>
     </div>
   );

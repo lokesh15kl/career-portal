@@ -1,10 +1,11 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { clearAttempts, getAttempts } from "../services/userProgress";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PaginationControls from "../components/PaginationControls";
 import ThemeToggle from "../components/ThemeToggle";
 import { logout } from "../services/api";
 import { setLoggedIn, setRole } from "../services/auth";
+import { withResolvedBase } from "../services/basePath";
 
 const CATEGORY_ICON = {
   Technical: "💻",
@@ -16,18 +17,39 @@ const CATEGORY_ICON = {
 
 const PAGE_SIZE = 4;
 
-function withBase(path) {
-  const base = import.meta.env.BASE_URL || "/";
-  return `${base}${String(path).replace(/^\/+/, "")}`;
-}
-
 export default function MyResults() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState(() => {
     const items = getAttempts();
     return [...items].sort((first, second) => new Date(second.timestamp) - new Date(first.timestamp));
   });
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const incoming = location.state?.latestAttempt;
+    if (!incoming) {
+      return;
+    }
+
+    setAttempts((previous) => {
+      const exists = previous.some((item) => {
+        return String(item?.id || "") === String(incoming?.id || "")
+          || (
+            Number(item?.timestamp || 0) === Number(incoming?.timestamp || 0)
+            && String(item?.quizTitle || "") === String(incoming?.quizTitle || "")
+          );
+      });
+
+      if (exists) {
+        return previous;
+      }
+
+      return [incoming, ...previous]
+        .sort((first, second) => Number(second?.timestamp || 0) - Number(first?.timestamp || 0))
+        .slice(0, 30);
+    });
+  }, [location.state]);
 
   const totalPages = Math.max(1, Math.ceil(attempts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -57,11 +79,11 @@ export default function MyResults() {
       <header className="student-page-topbar">
         <div>
           <h1 className="student-page-title">My Results</h1>
-          <p className="student-page-subtitle">Track your assessment performance and recommendations</p>
+          <p className="student-page-subtitle">Track performance trends and recommended career directions</p>
         </div>
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="student-page-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="student-page-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -77,14 +99,14 @@ export default function MyResults() {
         <div className="results-header-row">
           <h1 className="results-title">My Results</h1>
           <div className="results-actions-row">
-            <button onClick={onClear} className="results-clear-btn">Clear</button>
+            <button type="button" onClick={onClear} className="results-clear-btn">Clear</button>
             <Link to="/user" className="results-back-link">Back to Portal</Link>
           </div>
         </div>
 
         <div className="results-hero" role="img" aria-label="Results dashboard visuals">
-          <img src={withBase("career-banner.svg")} alt="Progress chart banner" className="results-hero-image" />
-          <img src={withBase("career-icons.svg")} alt="Career indicator icons" className="results-hero-icons" />
+          <img src={withResolvedBase("career-banner.svg")} alt="Progress chart banner" className="results-hero-image" />
+          <img src={withResolvedBase("career-icons.svg")} alt="Career indicator icons" className="results-hero-icons" />
           <div className="results-hero-copy">
             <p>Track performance history and recommendations over time</p>
             <small>Use page controls to browse your full assessment timeline.</small>
@@ -92,7 +114,7 @@ export default function MyResults() {
         </div>
 
         {attempts.length === 0 ? (
-          <p className="results-empty">No results yet. Complete an assessment to see your progress.</p>
+            <p className="results-empty">No results yet. Complete your first assessment to start tracking progress.</p>
         ) : (
           <>
             <p className="results-meta-line">

@@ -20,12 +20,13 @@ export default function ThemeToggle({ className = "" }) {
     <div className={`theme-toggle-group ${className}`.trim()}>
       <button
         type="button"
-        className="theme-toggle"
+        className="theme-toggle theme-toggle-theme"
         onClick={onToggle}
         aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
       >
-        {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+        <span className="theme-toggle-icon" aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
+        <span className="theme-toggle-label">{theme === "dark" ? "Light" : "Dark"}</span>
       </button>
 
       <button
@@ -35,7 +36,8 @@ export default function ThemeToggle({ className = "" }) {
         aria-label={motion === "reduced" ? "Enable normal motion" : "Enable reduced motion"}
         title={motion === "reduced" ? "Enable normal motion" : "Enable reduced motion"}
       >
-        {motion === "reduced" ? "🟢 Motion Off" : "🟣 Motion On"}
+        <span className="theme-toggle-icon" aria-hidden="true">{motion === "reduced" ? "🟢" : "🟣"}</span>
+        <span className="theme-toggle-label">{motion === "reduced" ? "Motion Off" : "Motion On"}</span>
       </button>
     </div>
   );

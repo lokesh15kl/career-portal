@@ -5,6 +5,7 @@ import {
   addAdminAssessmentCategory,
   createAdminQuiz,
   deleteAdminAssessmentCategory,
+  generateAiAssessmentForAdmin,
   getAdminAssessmentCategories,
   getManualQuestions,
   logout,
@@ -127,6 +128,10 @@ export default function AdminAssessments() {
   const [questionStatus, setQuestionStatus] = useState({ type: "", text: "" });
   const [isSavingQuestion, setIsSavingQuestion] = useState(false);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiDifficulty, setAiDifficulty] = useState("medium");
+  const [aiQuestionCount, setAiQuestionCount] = useState(8);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
   useEffect(() => {
     if (assessmentCatalog.length === 0) {
@@ -479,27 +484,10 @@ export default function AdminAssessments() {
       correctAnswer: correctAnswer.trim()
     };
 
-    let backendSaved = false;
     try {
       await saveManualQuestion(questionData);
-      backendSaved = true;
-    } catch {
-      backendSaved = false;
-    }
-
-    try {
-      const storedQuestions = JSON.parse(localStorage.getItem("manualQuizQuestions") || "{}");
-      const quizKey = `${selectedAssessment}-${normalizedQuizName}`;
-      const nextQuestion = {
-        id: Date.now(),
-        ...questionData,
-        createdAt: new Date().toISOString()
-      };
-
-      const nextList = [...(storedQuestions[quizKey] || []), nextQuestion];
-      storedQuestions[quizKey] = nextList;
-      localStorage.setItem("manualQuizQuestions", JSON.stringify(storedQuestions));
-      setQuestions(nextList);
+      const latest = await getManualQuestions(selectedAssessment, normalizedQuizName);
+      setQuestions(Array.isArray(latest) ? latest : []);
 
       setQuestionText("");
       setOption1("");
@@ -510,10 +498,10 @@ export default function AdminAssessments() {
 
       setQuestionStatus({
         type: "success",
-        text: backendSaved ? "Question saved to database." : "Question saved locally (backend pending)."
+        text: "Question saved to database."
       });
-    } catch {
-      setQuestionStatus({ type: "error", text: "Failed to save question." });
+    } catch (saveError) {
+      setQuestionStatus({ type: "error", text: saveError?.message || "Failed to save question in backend." });
     } finally {
       setIsSavingQuestion(false);
     }
@@ -559,12 +547,37 @@ export default function AdminAssessments() {
     setIsSubmittingQuiz(true);
     setQuestionStatus({ type: "", text: "" });
 
-    let backendSubmitted = false;
     try {
       await createAdminQuiz({ assessment: selectedAssessment, quizName: normalizedQuizName });
-      backendSubmitted = true;
-    } catch {
-      backendSubmitted = false;
+    } catch (publishError) {
+      const publishMessage = String(publishError?.message || "").toLowerCase();
+      const quizAlreadyExists = publishMessage.includes("quiz already exists")
+        || publishMessage.includes("already exists");
+
+      if (!quizAlreadyExists) {
+        setQuestionStatus({
+          type: "error",
+          text: publishError?.message || "Failed to publish quiz to backend."
+        });
+        setIsSubmittingQuiz(false);
+        return;
+      }
+
+      // Existing quizzes should still allow submit/publish of saved questions.
+      const existing = quizCatalog[selectedAssessment] || [];
+      const exists = existing.some((item) => item.toLowerCase() === normalizedQuizName.toLowerCase());
+      const updatedCatalog = {
+        ...quizCatalog,
+        [selectedAssessment]: exists ? existing : [...existing, normalizedQuizName]
+      };
+      persistCatalog(updatedCatalog);
+
+      setQuestionStatus({
+        type: "success",
+        text: "Quiz already exists. Questions were saved to this quiz successfully."
+      });
+      setIsSubmittingQuiz(false);
+      return;
     }
 
     const existing = quizCatalog[selectedAssessment] || [];
@@ -577,12 +590,63 @@ export default function AdminAssessments() {
 
     setQuestionStatus({
       type: "success",
-      text: backendSubmitted
-        ? "Quiz submitted and published to user flow."
-        : "Quiz submitted locally and published in list."
+      text: "Quiz submitted and published to user flow."
     });
 
     setIsSubmittingQuiz(false);
+  };
+
+  const onGenerateAiQuiz = async () => {
+    const normalizedQuizName = quizName.trim();
+
+    if (!selectedAssessment) {
+      setQuestionStatus({ type: "error", text: "Please select an assessment category first." });
+      return;
+    }
+
+    if (!normalizedQuizName) {
+      setQuestionStatus({ type: "error", text: "Enter quiz name to generate with AI." });
+      return;
+    }
+
+    setIsGeneratingAi(true);
+    setQuestionStatus({ type: "", text: "" });
+
+    try {
+      const result = await generateAiAssessmentForAdmin({
+        category: selectedAssessment,
+        quizTitle: normalizedQuizName,
+        topic: aiTopic.trim() || selectedCategoryLabel,
+        difficulty: aiDifficulty,
+        questionCount: aiQuestionCount,
+        replaceExisting: true
+      });
+
+      const publishedTitle = String(result?.quizTitle || normalizedQuizName).trim();
+      const generatedQuestions = Array.isArray(result?.questions) ? result.questions : [];
+
+      const existing = quizCatalog[selectedAssessment] || [];
+      const exists = existing.some((item) => item.toLowerCase() === publishedTitle.toLowerCase());
+      const nextCatalog = {
+        ...quizCatalog,
+        [selectedAssessment]: exists ? existing : [...existing, publishedTitle]
+      };
+
+      persistCatalog(nextCatalog);
+      setQuizName(publishedTitle);
+      setQuestions(generatedQuestions);
+      setQuestionStatus({
+        type: "success",
+        text: result?.message || "AI quiz generated and published for users."
+      });
+    } catch (generationError) {
+      setQuestionStatus({
+        type: "error",
+        text: generationError?.message || "Failed to generate AI quiz."
+      });
+    } finally {
+      setIsGeneratingAi(false);
+    }
   };
 
   return (
@@ -598,7 +662,7 @@ export default function AdminAssessments() {
 
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="admin-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="admin-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -717,6 +781,49 @@ export default function AdminAssessments() {
             >
               Open Selected Assessment in Dashboard
             </button>
+
+            <div className="admin-manual-inline-head" style={{ marginTop: "1rem" }}>
+              <h3 className="admin-assessment-list-title">AI Generate & Publish</h3>
+              <p className="admin-assessment-note">Create questions instantly and assign this assessment to users.</p>
+            </div>
+
+            <div className="admin-assessment-input-row">
+              <input
+                className="admin-assessment-input"
+                placeholder="Topic focus (optional)"
+                value={aiTopic}
+                onChange={(event) => setAiTopic(event.target.value)}
+              />
+
+              <select
+                className="admin-assessment-input"
+                value={aiDifficulty}
+                onChange={(event) => setAiDifficulty(event.target.value)}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+
+            <div className="admin-assessment-input-row">
+              <input
+                type="number"
+                min={3}
+                max={20}
+                className="admin-assessment-input"
+                value={aiQuestionCount}
+                onChange={(event) => setAiQuestionCount(Number(event.target.value) || 8)}
+              />
+              <button
+                type="button"
+                className="admin-assessment-add-btn"
+                onClick={onGenerateAiQuiz}
+                disabled={isGeneratingAi}
+              >
+                {isGeneratingAi ? "Generating..." : "Generate Quiz with AI"}
+              </button>
+            </div>
           </form>
 
           <div className="admin-assessment-quiz-list">

@@ -29,78 +29,118 @@ export default function CustomCursor() {
       return undefined;
     }
 
-    const canUseCursor =
-      window.matchMedia("(pointer: fine)").matches &&
-      !window.matchMedia("(hover: none)").matches &&
-      document.documentElement.getAttribute("data-motion") !== "reduced";
+    const finePointerQuery = window.matchMedia("(pointer: fine)");
+    const noHoverQuery = window.matchMedia("(hover: none)");
+    let cleanupCursor = () => {};
 
-    if (!canUseCursor) {
-      document.documentElement.setAttribute("data-cursor", "default");
-      return undefined;
-    }
+    const setupCursor = () => {
+      const canUseCursor =
+        finePointerQuery.matches &&
+        !noHoverQuery.matches &&
+        document.documentElement.getAttribute("data-motion") !== "reduced";
 
-    document.documentElement.setAttribute("data-cursor", "custom");
+      root.classList.remove("is-visible", "is-hover", "is-down");
 
-    let rafId = 0;
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let ringX = mouseX;
-    let ringY = mouseY;
+      if (!canUseCursor) {
+        document.documentElement.setAttribute("data-cursor", "default");
+        return () => {};
+      }
 
-    const update = () => {
-      ringX += (mouseX - ringX) * 0.2;
-      ringY += (mouseY - ringY) * 0.2;
+      document.documentElement.setAttribute("data-cursor", "custom");
 
-      dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
-      ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
+      let rafId = 0;
+      let mouseX = window.innerWidth / 2;
+      let mouseY = window.innerHeight / 2;
+      let ringX = mouseX;
+      let ringY = mouseY;
+
+      const update = () => {
+        ringX += (mouseX - ringX) * 0.2;
+        ringY += (mouseY - ringY) * 0.2;
+
+        dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+        ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
+
+        rafId = window.requestAnimationFrame(update);
+      };
+
+      const onMove = (event) => {
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+        root.classList.add("is-visible");
+      };
+
+      const onMouseDown = () => root.classList.add("is-down");
+      const onMouseUp = () => root.classList.remove("is-down");
+
+      const onOver = (event) => {
+        if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
+          root.classList.add("is-hover");
+        }
+      };
+
+      const onOut = (event) => {
+        if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
+          root.classList.remove("is-hover");
+        }
+      };
+
+      const onLeaveViewport = () => root.classList.remove("is-visible");
+      const onEnterViewport = () => root.classList.add("is-visible");
+
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mousedown", onMouseDown);
+      window.addEventListener("mouseup", onMouseUp);
+      window.addEventListener("mouseout", onOut);
+      window.addEventListener("mouseover", onOver);
+      document.addEventListener("mouseleave", onLeaveViewport);
+      document.addEventListener("mouseenter", onEnterViewport);
 
       rafId = window.requestAnimationFrame(update);
+
+      return () => {
+        window.cancelAnimationFrame(rafId);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mousedown", onMouseDown);
+        window.removeEventListener("mouseup", onMouseUp);
+        window.removeEventListener("mouseout", onOut);
+        window.removeEventListener("mouseover", onOver);
+        document.removeEventListener("mouseleave", onLeaveViewport);
+        document.removeEventListener("mouseenter", onEnterViewport);
+        root.classList.remove("is-visible", "is-hover", "is-down");
+        document.documentElement.setAttribute("data-cursor", "default");
+      };
     };
 
-    const onMove = (event) => {
-      mouseX = event.clientX;
-      mouseY = event.clientY;
-      root.classList.add("is-visible");
+    const refreshCursor = () => {
+      cleanupCursor();
+      cleanupCursor = setupCursor();
     };
 
-    const onMouseDown = () => root.classList.add("is-down");
-    const onMouseUp = () => root.classList.remove("is-down");
+    const onMotionChange = () => refreshCursor();
 
-    const onOver = (event) => {
-      if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
-        root.classList.add("is-hover");
-      }
-    };
+    refreshCursor();
+    window.addEventListener("app:motion-change", onMotionChange);
 
-    const onOut = (event) => {
-      if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
-        root.classList.remove("is-hover");
-      }
-    };
-
-    const onLeaveViewport = () => root.classList.remove("is-visible");
-    const onEnterViewport = () => root.classList.add("is-visible");
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("mouseout", onOut);
-    window.addEventListener("mouseover", onOver);
-    document.addEventListener("mouseleave", onLeaveViewport);
-    document.addEventListener("mouseenter", onEnterViewport);
-
-    rafId = window.requestAnimationFrame(update);
+    if (typeof finePointerQuery.addEventListener === "function") {
+      finePointerQuery.addEventListener("change", onMotionChange);
+      noHoverQuery.addEventListener("change", onMotionChange);
+    } else {
+      finePointerQuery.addListener(onMotionChange);
+      noHoverQuery.addListener(onMotionChange);
+    }
 
     return () => {
-      window.cancelAnimationFrame(rafId);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("mouseout", onOut);
-      window.removeEventListener("mouseover", onOver);
-      document.removeEventListener("mouseleave", onLeaveViewport);
-      document.removeEventListener("mouseenter", onEnterViewport);
-      document.documentElement.setAttribute("data-cursor", "default");
+      cleanupCursor();
+      window.removeEventListener("app:motion-change", onMotionChange);
+
+      if (typeof finePointerQuery.removeEventListener === "function") {
+        finePointerQuery.removeEventListener("change", onMotionChange);
+        noHoverQuery.removeEventListener("change", onMotionChange);
+      } else {
+        finePointerQuery.removeListener(onMotionChange);
+        noHoverQuery.removeListener(onMotionChange);
+      }
     };
   }, []);
 

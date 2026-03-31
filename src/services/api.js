@@ -1,4 +1,17 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://career-portal-backend.onrender.com").replace(/\/$/, "");
+const API_BASE_URL = (() => {
+  const configured = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
+  // In local dev, default to local backend to avoid accidental remote calls.
+  if (import.meta.env.DEV) {
+    return "";
+  }
+
+  return "https://career-portal-backend.onrender.com";
+})();
 const ADMIN_QUIZ_CATALOG_STORAGE_KEY = "admin_quiz_catalog";
 const MANUAL_QUIZ_QUESTIONS_STORAGE_KEY = "manualQuizQuestions";
 const CAREER_CATALOG_STORAGE_KEY = "admin_career_catalog";
@@ -372,6 +385,131 @@ function normalizeQuizTitles(data) {
   return [];
 }
 
+function toList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeText(item)).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/\n|,|;|\|/)
+      .map((item) => normalizeText(item))
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeCareerInsightResponse(data, fallbackCareer) {
+  const role = normalizeText(
+    data?.role ||
+    data?.career ||
+    data?.title ||
+    fallbackCareer?.role ||
+    "Career"
+  );
+
+  const category = normalizeText(data?.category || fallbackCareer?.category || "General");
+  const skills = toList(data?.skills || data?.requiredSkills || fallbackCareer?.skills || []);
+  const roadmap = toList(data?.roadmap || data?.learningPath || fallbackCareer?.path || []);
+
+  const suggestionsRaw =
+    data?.suggestions ||
+    data?.recommendedRoles ||
+    data?.relatedCareers ||
+    data?.alternatives ||
+    [];
+
+  const suggestions = Array.isArray(suggestionsRaw)
+    ? suggestionsRaw
+      .map((item) => {
+        if (typeof item === "string") {
+          const title = normalizeText(item);
+          return title ? { title, reason: "Related role based on skill overlap." } : null;
+        }
+
+        if (item && typeof item === "object") {
+          const title = normalizeText(item.title || item.role || item.name);
+          const reason = normalizeText(item.reason || item.why || "Related role based on skill overlap.");
+          return title ? { title, reason } : null;
+        }
+
+        return null;
+      })
+      .filter(Boolean)
+    : [];
+
+  const overview = normalizeText(
+    data?.overview ||
+    data?.summary ||
+    data?.description ||
+    `${role} focuses on practical responsibilities in ${category.toLowerCase()} workflows.`
+  );
+
+  const responsibilities = toList(
+    data?.responsibilities ||
+    data?.dayToDay ||
+    data?.tasks ||
+    []
+  );
+
+  const tools = toList(data?.tools || data?.technologies || data?.tooling || []);
+  const salaryRange = normalizeText(data?.salaryRange || data?.salary || data?.compensation || "Varies by location and experience");
+  const futureScope = normalizeText(data?.futureScope || data?.growth || data?.outlook || "Steady demand with continuous upskilling.");
+
+  return {
+    role,
+    category,
+    overview,
+    skills: skills.length ? skills : toList(fallbackCareer?.skills || []),
+    roadmap: roadmap.length ? roadmap : toList(fallbackCareer?.path || []),
+    responsibilities,
+    tools,
+    salaryRange,
+    futureScope,
+    suggestions
+  };
+}
+
+function buildFallbackCareerInsight(careerQuery, catalog) {
+  const query = normalizeText(careerQuery).toLowerCase();
+  const fallbackCareer =
+    catalog.find((item) => normalizeText(item.role).toLowerCase().includes(query)) ||
+    catalog.find((item) => normalizeText(item.category).toLowerCase().includes(query)) ||
+    catalog[0] ||
+    FALLBACK_CAREER_CATALOG[0];
+
+  const suggestions = catalog
+    .filter((item) => item.role !== fallbackCareer.role)
+    .filter((item) => item.category === fallbackCareer.category)
+    .slice(0, 4)
+    .map((item) => ({
+      title: item.role,
+      reason: `Similar ${item.category} career path with overlapping skills.`
+    }));
+
+  return normalizeCareerInsightResponse(
+    {
+      role: fallbackCareer.role,
+      category: fallbackCareer.category,
+      overview: `${fallbackCareer.role} is a strong option for learners interested in ${fallbackCareer.category.toLowerCase()} outcomes. Focus on practical projects and role-specific execution to grow faster.`,
+      requiredSkills: fallbackCareer.skills,
+      learningPath: fallbackCareer.path,
+      responsibilities: [
+        "Understand business or product requirements.",
+        "Execute role-specific tasks with quality and consistency.",
+        "Collaborate with teams and communicate progress.",
+        "Continuously upskill with hands-on projects."
+      ],
+      tools: ["Role-based tools", "Documentation", "Collaboration platforms"],
+      salaryRange: "Depends on city, company, and experience level",
+      futureScope: `Good long-term growth in ${fallbackCareer.category.toLowerCase()} domains with continuous practice.`,
+      suggestions
+    },
+    fallbackCareer
+  );
+}
+
 async function request(path, options = {}) {
   let response;
 
@@ -535,6 +673,44 @@ export async function loginWithCaptcha({ email, password, captcha, captchaId }) 
 
 export async function logout() {
   return request("/api/auth/logout", { method: "POST" });
+}
+
+export async function updateCurrentUserProfile({ name, profileImageUrl }) {
+  const payload = {
+    name: normalizeText(name),
+    profileImageUrl: normalizeText(profileImageUrl)
+  };
+
+  if (!payload.name) {
+    throw new Error("Name is required.");
+  }
+
+  return request("/api/auth/profile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function changeCurrentUserPassword({ currentPassword, newPassword }) {
+  const payload = {
+    currentPassword: normalizeText(currentPassword),
+    newPassword: normalizeText(newPassword)
+  };
+
+  if (!payload.currentPassword || !payload.newPassword) {
+    throw new Error("Current and new passwords are required.");
+  }
+
+  return request("/api/auth/change-password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function sendOtp({ name, email, password }) {
@@ -856,18 +1032,31 @@ export async function deleteAdminAssessmentCategory(name) {
 
 export async function getQuizList(category) {
   const normalizedCategory = String(category || "").trim();
-  const query = new URLSearchParams({ category: normalizedCategory }).toString();
+  const categoryVariants = Array.from(new Set([
+    normalizedCategory,
+    normalizedCategory.replace(/\s+assessment$/i, "").trim(),
+    /\s+assessment$/i.test(normalizedCategory)
+      ? normalizedCategory
+      : `${normalizedCategory} Assessment`
+  ].filter(Boolean)));
 
-  const localTitles = getLocalQuizTitlesByCategory(normalizedCategory);
+  const localTitles = categoryVariants.flatMap((item) => getLocalQuizTitlesByCategory(item));
 
-  try {
-    const data = await request(`/api/quizList?${query}`);
-    const normalized = normalizeQuizTitles(data);
-    if (normalized.length > 0 || localTitles.length > 0) {
-      return Array.from(new Set([...normalized, ...localTitles]));
+  const backendTitles = [];
+  for (const variant of categoryVariants) {
+    const query = new URLSearchParams({ category: variant }).toString();
+
+    try {
+      const data = await request(`/api/quizList?${query}`);
+      backendTitles.push(...normalizeQuizTitles(data));
+    } catch {
+      // try remaining variants
     }
-  } catch {
-    // fallback below
+  }
+
+  const mergedTitles = Array.from(new Set([...backendTitles, ...localTitles]));
+  if (mergedTitles.length > 0) {
+    return mergedTitles;
   }
 
   if (!normalizedCategory) {
@@ -890,16 +1079,27 @@ export async function getQuizList(category) {
 }
 
 export async function attemptQuiz(category, quizTitle) {
-  const query = new URLSearchParams({ category, quizTitle }).toString();
+  const normalizedCategory = normalizeText(category);
+  const categoryVariants = Array.from(new Set([
+    normalizedCategory,
+    normalizedCategory.replace(/\s+assessment$/i, "").trim(),
+    /\s+assessment$/i.test(normalizedCategory)
+      ? normalizedCategory
+      : `${normalizedCategory} Assessment`
+  ].filter(Boolean)));
 
-  try {
-    const data = await request(`/api/attemptQuiz?${query}`);
-    const normalized = normalizeAttemptQuestions(data);
-    if (normalized.length > 0) {
-      return normalized;
+  for (const variant of categoryVariants) {
+    const query = new URLSearchParams({ category: variant, quizTitle }).toString();
+
+    try {
+      const data = await request(`/api/attemptQuiz?${query}`);
+      const normalized = normalizeAttemptQuestions(data);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    } catch {
+      // try remaining variants
     }
-  } catch {
-    // fallback below
   }
 
   return getLocalAttemptQuestions(category, quizTitle);
@@ -998,6 +1198,84 @@ export async function submitQuizWithTypedQuestions({
 
 export async function getAdminAnalytics() {
   return request("/api/admin/analytics");
+}
+
+export async function getAiGenerationStatus() {
+  try {
+    const data = await request("/api/ai/status");
+    return {
+      available: Boolean(data?.available),
+      message: String(data?.message || "AI service status is available."),
+      features: Array.isArray(data?.features) ? data.features : []
+    };
+  } catch (error) {
+    return {
+      available: false,
+      message: error?.message || "AI generation service is unavailable right now.",
+      features: []
+    };
+  }
+}
+
+export async function generateAiAssessmentForAdmin({
+  category,
+  quizTitle,
+  topic,
+  difficulty = "medium",
+  questionCount = 8,
+  replaceExisting = true
+}) {
+  const payload = {
+    category: normalizeText(category),
+    quizTitle: normalizeText(quizTitle),
+    topic: normalizeText(topic),
+    difficulty: normalizeText(difficulty || "medium").toLowerCase(),
+    questionCount: Number(questionCount) || 8,
+    replaceExisting: Boolean(replaceExisting)
+  };
+
+  if (!payload.category || !payload.quizTitle) {
+    throw new Error("Category and quiz title are required for AI generation.");
+  }
+
+  return request("/api/admin/ai/generate-assessment", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function generateAiPracticeQuiz({
+  category,
+  topic,
+  difficulty = "medium",
+  questionCount = 6,
+  quizTitle
+}) {
+  const normalizedTopic = normalizeText(topic);
+  const normalizedCategory = normalizeText(category) || normalizedTopic;
+
+  const payload = {
+    category: normalizedCategory,
+    topic: normalizedTopic,
+    difficulty: normalizeText(difficulty || "medium").toLowerCase(),
+    questionCount: Number(questionCount) || 6,
+    quizTitle: normalizeText(quizTitle) || `${normalizedTopic || "Practice"} Quiz`
+  };
+
+  if (!payload.topic) {
+    throw new Error("Topic is required for AI practice generation.");
+  }
+
+  return request("/api/ai/generate-practice", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function createAdminQuiz({ assessment, quizName }) {
@@ -1182,6 +1460,61 @@ export async function getCareerCatalog() {
 
   writeLocalCareerCatalog(FALLBACK_CAREER_CATALOG);
   return FALLBACK_CAREER_CATALOG;
+}
+
+export async function getCareerInsights(careerQuery) {
+  const normalizedQuery = normalizeText(careerQuery);
+  if (!normalizedQuery) {
+    throw new Error("Career search query is required.");
+  }
+
+  const catalog = await getCareerCatalog();
+  const primaryCareer =
+    catalog.find((item) => normalizeText(item.role).toLowerCase() === normalizedQuery.toLowerCase()) ||
+    catalog.find((item) => normalizeText(item.role).toLowerCase().includes(normalizedQuery.toLowerCase())) ||
+    catalog.find((item) => normalizeText(item.category).toLowerCase().includes(normalizedQuery.toLowerCase())) ||
+    null;
+
+  const payload = {
+    career: normalizedQuery,
+    role: normalizedQuery,
+    category: primaryCareer?.category || "",
+    context: primaryCareer || null
+  };
+
+  const attempts = [
+    {
+      path: "/api/ai/career-insights",
+      options: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    },
+    {
+      path: "/api/ai/career-guide",
+      options: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    },
+    {
+      path: `/api/ai/career-search?${new URLSearchParams({ query: normalizedQuery }).toString()}`,
+      options: { method: "GET" }
+    }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const response = await request(attempt.path, attempt.options);
+      return normalizeCareerInsightResponse(response, primaryCareer);
+    } catch {
+      // try next endpoint
+    }
+  }
+
+  return buildFallbackCareerInsight(normalizedQuery, catalog);
 }
 
 export async function addCareerProfile({ role, category, skills, path }) {

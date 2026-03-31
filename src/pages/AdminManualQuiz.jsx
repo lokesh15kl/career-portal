@@ -202,6 +202,7 @@ const AdminManualQuiz = () => {
     setMessage({ type: '', text: '' });
 
     let backendSubmitted = false;
+    let alreadyExists = false;
 
     try {
       await createAdminQuiz({
@@ -209,8 +210,19 @@ const AdminManualQuiz = () => {
         quizName: normalizedQuizName
       });
       backendSubmitted = true;
-    } catch {
+    } catch (submitError) {
+      const submitMessage = String(submitError?.message || '').toLowerCase();
+      alreadyExists = submitMessage.includes('quiz already exists') || submitMessage.includes('already exists');
       backendSubmitted = false;
+
+      if (!alreadyExists) {
+        setMessage({
+          type: 'error',
+          text: submitError?.message || 'Failed to publish quiz in backend.'
+        });
+        setIsSubmittingQuiz(false);
+        return;
+      }
     }
 
     try {
@@ -229,7 +241,9 @@ const AdminManualQuiz = () => {
         type: 'success',
         text: backendSubmitted
           ? 'Quiz submitted successfully. It is now available in User Portal.'
-          : 'Quiz submitted locally and published to User Portal list.'
+          : alreadyExists
+            ? 'Quiz already exists. Questions were added to this quiz successfully.'
+            : 'Quiz submitted locally and published to User Portal list.'
       });
     } catch {
       setMessage({ type: 'error', text: 'Quiz submit failed while saving publish state.' });
@@ -254,7 +268,7 @@ const AdminManualQuiz = () => {
           </div>
           <div className="admin-nav-right">
             <ThemeToggle />
-            <button onClick={handleLogout} className="admin-logout-btn">
+            <button type="button" onClick={handleLogout} className="admin-logout-btn">
               Logout
             </button>
           </div>

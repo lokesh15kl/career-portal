@@ -6,11 +6,13 @@
     <title>Redirecting...</title>
     <script>
       (function () {
-        var base = "/career-portal";
         var path = window.location.pathname;
         var search = window.location.search || "";
         var hash = window.location.hash || "";
-        var trimmed = path.startsWith(base) ? path.slice(base.length) : path;
+        var segments = path.split("/").filter(Boolean);
+        var hasRepoBase = segments.length > 1;
+        var base = hasRepoBase ? "/" + segments[0] : "";
+        var trimmed = hasRepoBase ? "/" + segments.slice(1).join("/") : path;
         var next = base + "/?redirect=" + encodeURIComponent(trimmed + search + hash);
         window.location.replace(next);
       })();

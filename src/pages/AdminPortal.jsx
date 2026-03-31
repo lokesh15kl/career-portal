@@ -1,16 +1,26 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ThemeToggle from "../components/ThemeToggle";
-import { logout } from "../services/api";
+import { getAiGenerationStatus, logout } from "../services/api";
 import { setLoggedIn, setRole } from "../services/auth";
 
 export default function AdminPortal() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showServiceAlert, setShowServiceAlert] = useState(true);
+  const [aiStatus, setAiStatus] = useState({ available: false, message: "Checking AI service..." });
 
   const selectedAssessment = location.state?.selectedAssessment || "";
   const selectedQuiz = location.state?.selectedQuiz || "";
+
+  useEffect(() => {
+    const loadAiStatus = async () => {
+      const status = await getAiGenerationStatus();
+      setAiStatus(status);
+    };
+
+    loadAiStatus();
+  }, []);
 
   const onLogout = async () => {
     try {
@@ -37,7 +47,7 @@ export default function AdminPortal() {
 
         <div className="topbar-actions">
           <ThemeToggle />
-          <button onClick={onLogout} className="admin-logout-btn">Logout</button>
+          <button type="button" onClick={onLogout} className="admin-logout-btn">Logout</button>
         </div>
       </header>
 
@@ -55,17 +65,29 @@ export default function AdminPortal() {
           <div className="admin-alert-banner">
             <div className="admin-alert-content">
               <h3 className="admin-alert-title">AI Service Status</h3>
-              <p className="admin-alert-text">
-                The ChatGPT-powered quiz generation service is currently unavailable.
-              </p>
-              <p className="admin-alert-text">You can still:</p>
-              <ul className="admin-alert-list">
-                <li>Manually create quizzes using the Assessments page</li>
-                <li>Review existing assessments and results</li>
-                <li>Try again after backend service restarts</li>
-              </ul>
+              {aiStatus.available ? (
+                <>
+                  <p className="admin-alert-text">{aiStatus.message}</p>
+                  <p className="admin-alert-text">You can now:</p>
+                  <ul className="admin-alert-list">
+                    <li>Generate AI assessments for students from the Assessments page</li>
+                    <li>Publish those quizzes directly into the user assessment flow</li>
+                    <li>Let users generate their own AI practice quizzes</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="admin-alert-text">{aiStatus.message}</p>
+                  <p className="admin-alert-text">You can still:</p>
+                  <ul className="admin-alert-list">
+                    <li>Manually create quizzes using the Assessments page</li>
+                    <li>Review existing assessments and results</li>
+                    <li>Try again after backend service restarts</li>
+                  </ul>
+                </>
+              )}
             </div>
-            <button onClick={() => setShowServiceAlert(false)} className="admin-alert-close">×</button>
+            <button type="button" onClick={() => setShowServiceAlert(false)} className="admin-alert-close">×</button>
           </div>
         )}
 
