@@ -3,6 +3,9 @@ package com.example.full.project;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,8 +13,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class FullProjectApplication {
 
+    private static final String FALLBACK_H2_URL = "jdbc:h2:mem:careerportal;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+
     public static void main(String[] args) {
         normalizeDatabaseUrl();
+        ensureDatabaseAvailable();
         SpringApplication.run(FullProjectApplication.class, args);
     }
 
@@ -75,7 +81,41 @@ public class FullProjectApplication {
         if (startsWithIgnoreCase(jdbcUrl, "jdbc:mysql:")) {
             System.setProperty("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
             System.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.MySQLDialect");
+            return;
         }
+
+        if (startsWithIgnoreCase(jdbcUrl, "jdbc:h2:")) {
+            System.setProperty("spring.datasource.driver-class-name", "org.h2.Driver");
+            System.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.H2Dialect");
+        }
+    }
+
+    private static void ensureDatabaseAvailable() {
+        String jdbcUrl = System.getProperty("spring.datasource.url");
+        if (jdbcUrl == null || jdbcUrl.isBlank()) {
+            useFallbackDatabase();
+            return;
+        }
+
+        String username = System.getProperty("spring.datasource.username", "");
+        String password = System.getProperty("spring.datasource.password", "");
+
+        try {
+            DriverManager.setLoginTimeout(5);
+            try (Connection ignored = DriverManager.getConnection(jdbcUrl, username, password)) {
+                return;
+            }
+        } catch (SQLException ex) {
+            useFallbackDatabase();
+        }
+    }
+
+    private static void useFallbackDatabase() {
+        System.setProperty("spring.datasource.url", FALLBACK_H2_URL);
+        System.setProperty("spring.datasource.driver-class-name", "org.h2.Driver");
+        System.setProperty("spring.datasource.username", "sa");
+        System.setProperty("spring.datasource.password", "");
+        System.setProperty("spring.jpa.database-platform", "org.hibernate.dialect.H2Dialect");
     }
 
     private static void applyJdbcProperties(String rawUrl, String driverType) {

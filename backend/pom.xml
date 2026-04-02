@@ -59,6 +59,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- IN-MEMORY FALLBACK DATABASE -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- MAIL (OTP SERVICE) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
