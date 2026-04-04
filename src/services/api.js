@@ -10,7 +10,7 @@ const API_BASE_URL = (() => {
     return "";
   }
 
-  return "https://career-portal-backend.onrender.com";
+  return "https://career-portal-backend-umzn.onrender.com";
 })();
 const ADMIN_QUIZ_CATALOG_STORAGE_KEY = "admin_quiz_catalog";
 const MANUAL_QUIZ_QUESTIONS_STORAGE_KEY = "manualQuizQuestions";
@@ -721,6 +721,16 @@ export async function sendOtp({ name, email, password }) {
       "Content-Type": "application/x-www-form-urlencoded"
     },
     body
+  });
+}
+
+export async function registerUser({ name, email, password, role = "USER" }) {
+  return request("/api/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ name, email, password, role })
   });
 }
 

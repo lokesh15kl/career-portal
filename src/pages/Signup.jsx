@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sendOtp, testBackend, verifyOtp } from "../services/api";
+import { registerUser, sendOtp, testBackend, verifyOtp } from "../services/api";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -46,7 +46,22 @@ export default function Signup() {
       setStep("otp");
       setMessage("OTP sent to your email. Enter it below.");
     } catch (sendError) {
-      setError(sendError.message || "Unable to send OTP");
+      const errorText = String(sendError?.message || "");
+      const smtpUnavailable = /failed to send otp email|smtp|app password/i.test(errorText);
+
+      if (smtpUnavailable) {
+        try {
+          await registerUser({ ...form, role: "USER" });
+          setMessage("Signup completed. Email OTP is temporarily unavailable, so your account was created directly.");
+          setTimeout(() => navigate("/login"), 1200);
+          return;
+        } catch (registerError) {
+          setError(registerError?.message || "Unable to create account");
+          return;
+        }
+      }
+
+      setError(errorText || "Unable to send OTP");
     } finally {
       setLoading(false);
     }
