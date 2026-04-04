@@ -46,7 +46,13 @@ export function buildSafeExamBrowserLaunchUrl(examUrl) {
 
   const normalizedExamUrl = normalizeText(examUrl);
   if (!normalizedExamUrl) {
-    return "seb://";
+    return "";
+  }
+
+  // SEB custom protocols are intended for .seb config resources.
+  // A plain quiz web URL often triggers "configuration resource is not supported".
+  if (!/\.seb([?#].*)?$/i.test(normalizedExamUrl)) {
+    return "";
   }
 
   try {

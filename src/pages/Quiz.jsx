@@ -27,7 +27,7 @@ export default function Quiz() {
   const quizKey = useMemo(() => createQuizKey({ category, quizTitle }), [category, quizTitle]);
   const insideSafeExamBrowser = isInsideSafeExamBrowser();
   const shouldRequireSeb = !isAiPracticeMode
-    && String(import.meta.env.VITE_REQUIRE_SEB ?? "true").toLowerCase() !== "false";
+    && String(import.meta.env.VITE_REQUIRE_SEB ?? "false").toLowerCase() !== "false";
   const shouldBlockForSeb = shouldRequireSeb && !insideSafeExamBrowser;
 
   const [questions, setQuestions] = useState([]);
@@ -40,6 +40,7 @@ export default function Quiz() {
   const [recordingByQuestion, setRecordingByQuestion] = useState({});
   const [audioResponses, setAudioResponses] = useState({});
   const [showSebNotice, setShowSebNotice] = useState(false);
+  const [sebLaunchError, setSebLaunchError] = useState("");
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isExamTerminated, setIsExamTerminated] = useState(false);
   const [terminationReason, setTerminationReason] = useState("");
@@ -143,6 +144,17 @@ export default function Quiz() {
 
     setShowSebNotice(!launched);
   }, [category, quizTitle, quizKey, insideSafeExamBrowser, isAiPracticeMode]);
+
+  const onLaunchSeb = () => {
+    const launchUrl = buildSafeExamBrowserLaunchUrl(window.location.href);
+    if (!launchUrl) {
+      setSebLaunchError("SEB direct launch needs a configured .seb link. Ask admin to set VITE_SEB_LAUNCH_URL.");
+      return;
+    }
+
+    setSebLaunchError("");
+    window.location.assign(launchUrl);
+  };
 
   const mediaRecorderByQuestionRef = useRef({});
   const mediaStreamByQuestionRef = useRef({});
@@ -420,10 +432,11 @@ export default function Quiz() {
             <button
               type="button"
               className="quiz-seb-open-btn"
-              onClick={() => window.location.assign(buildSafeExamBrowserLaunchUrl(window.location.href))}
+              onClick={onLaunchSeb}
             >
               Open in Safe Exam Browser
             </button>
+            {sebLaunchError ? <p className="quiz-error-text">{sebLaunchError}</p> : null}
           </div>
         ) : null}
 
@@ -474,10 +487,11 @@ export default function Quiz() {
             <button
               type="button"
               className="quiz-seb-open-btn"
-              onClick={() => window.location.assign(buildSafeExamBrowserLaunchUrl(window.location.href))}
+              onClick={onLaunchSeb}
             >
               Launch in Safe Exam Browser
             </button>
+            {sebLaunchError ? <p className="quiz-error-text">{sebLaunchError}</p> : null}
           </div>
         ) : null}
 
