@@ -299,6 +299,7 @@ function getLocalAttemptQuestions(category, quizTitle) {
 
 function normalizeServerError(message) {
   const text = String(message || "");
+  const lower = text.toLowerCase();
 
   if (
     text.includes("Name for argument of type") ||
@@ -308,11 +309,11 @@ function normalizeServerError(message) {
     return "Backend endpoint is misconfigured. Please try again or contact admin.";
   }
 
-  if (text.toLowerCase().includes("no static resource")) {
+  if (lower.includes("no static resource")) {
     return "Backend category endpoint is not available. Please enable category APIs in backend.";
   }
 
-  if (text.includes("404") || text.toLowerCase().includes("not found")) {
+  if (text.includes("404") || lower.includes("endpoint was not found") || lower.includes("requested uri was not found")) {
     return "Requested backend endpoint was not found.";
   }
 
