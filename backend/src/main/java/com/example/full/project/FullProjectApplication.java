@@ -101,7 +101,6 @@ public class FullProjectApplication {
 
             throw new IllegalStateException(
                 "No persistent database configured. Set JDBC_DATABASE_URL, DATABASE_USERNAME, and DATABASE_PASSWORD.");
-            return;
         }
 
         String username = System.getProperty("spring.datasource.username", "");
