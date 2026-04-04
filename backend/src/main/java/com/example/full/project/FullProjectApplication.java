@@ -91,9 +91,16 @@ public class FullProjectApplication {
     }
 
     private static void ensureDatabaseAvailable() {
+        boolean allowFallback = shouldAllowEmbeddedFallback();
         String jdbcUrl = System.getProperty("spring.datasource.url");
         if (jdbcUrl == null || jdbcUrl.isBlank()) {
-            useFallbackDatabase();
+            if (allowFallback) {
+                useFallbackDatabase();
+                return;
+            }
+
+            throw new IllegalStateException(
+                "No persistent database configured. Set JDBC_DATABASE_URL, DATABASE_USERNAME, and DATABASE_PASSWORD.");
             return;
         }
 
@@ -106,8 +113,32 @@ public class FullProjectApplication {
                 return;
             }
         } catch (SQLException ex) {
-            useFallbackDatabase();
+            if (allowFallback) {
+                useFallbackDatabase();
+                return;
+            }
+
+            throw new IllegalStateException(
+                "Failed to connect to persistent database. Verify JDBC_DATABASE_URL, DATABASE_USERNAME, and DATABASE_PASSWORD.",
+                ex);
         }
+    }
+
+    private static boolean shouldAllowEmbeddedFallback() {
+        String explicit = sanitizeUrl(System.getenv("ALLOW_EMBEDDED_DB_FALLBACK"));
+        if (explicit != null && !explicit.isBlank()) {
+            return "true".equalsIgnoreCase(explicit);
+        }
+
+        boolean runningOnRender = !isBlank(System.getenv("RENDER"))
+            || !isBlank(System.getenv("RENDER_SERVICE_ID"));
+
+        // Default: allow fallback only for local environments.
+        return !runningOnRender;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isBlank();
     }
 
     private static void useFallbackDatabase() {
