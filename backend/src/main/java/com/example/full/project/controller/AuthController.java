@@ -200,8 +200,8 @@ public class AuthController {
 
     @GetMapping("/api/auth/me")
     public ResponseEntity<?> me(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+        String userId = normalize((String) session.getAttribute("userId"));
+        if (userId.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Not authenticated"));
         }
 
@@ -225,8 +225,8 @@ public class AuthController {
             @RequestBody(required = false) Map<String, String> payload,
             HttpSession session) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+        String userId = normalize((String) session.getAttribute("userId"));
+        if (userId.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Not authenticated"));
         }
 
@@ -265,8 +265,8 @@ public class AuthController {
             @RequestBody(required = false) Map<String, String> payload,
             HttpSession session) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        if (userId == null) {
+        String userId = normalize((String) session.getAttribute("userId"));
+        if (userId.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Not authenticated"));
         }
 

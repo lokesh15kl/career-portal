@@ -46,13 +46,22 @@ async function resolveBackendTarget({ command, env }) {
   return 'http://localhost:8080'
 }
 
+function normalizeBasePath(value) {
+  const trimmed = String(value || '').trim()
+  if (!trimmed || trimmed === '/') return '/'
+
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`
+}
+
 // https://vite.dev/config/
 export default defineConfig(async ({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const backendTarget = await resolveBackendTarget({ command, env });
+  const productionBasePath = normalizeBasePath(env.VITE_BASE_PATH || '/');
 
   return {
-    base: mode === 'production' ? "/career-portal/" : "/",
+    base: mode === 'production' ? productionBasePath : '/',
 
     plugins: [react()],
 

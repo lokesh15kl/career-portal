@@ -41,9 +41,9 @@ Set-ProcessEnvFromFile -Path $envFile
 
 if ([string]::IsNullOrWhiteSpace($env:JAVA_HOME) -or -not (Test-Path $env:JAVA_HOME)) {
     $candidates = @(
-        "C:\Program Files\Java\jdk-21",
         "C:\Program Files\Java\jdk-17",
-        "C:\Program Files\Java\jdk-17.0.12"
+        "C:\Program Files\Java\jdk-17.0.12",
+        "C:\Program Files\Java\jdk-21"
     )
 
     foreach ($candidate in $candidates) {

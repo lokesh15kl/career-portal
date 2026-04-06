@@ -73,56 +73,52 @@ npm run dev
 npm run build
 ```
 
-## Deployment (GitHub Pages + Spring Boot Backend)
+## Deployment
 
-If images are missing after deploy or login shows "Backend offline", verify these points:
+### Backend on Render
 
-1. Frontend repo base path
-- Base path is configurable via `VITE_BASE_PATH` (defaults to `/`).
-- For user/organization pages (`https://<user>.github.io`), keep `VITE_BASE_PATH=/`.
-- For project pages (`https://<user>.github.io/<repo>/`), set `VITE_BASE_PATH=/career-portal/` (or your repo name).
-
-2. Frontend API base URL
-- Create `.env.production` from `.env.production.example` and set:
+1. Create a new Render Web Service from this repository.
+2. Use the Docker deployment path defined in [render.yaml](render.yaml).
+3. Set these Render environment variables:
 ```bash
-VITE_API_BASE_URL=https://your-backend-domain.com
-```
-- Rebuild and redeploy frontend after setting this.
-
-3. Backend CORS for deployed frontend
-- Set backend env var `CORS_ALLOWED_ORIGINS` to include your frontend origin, for example:
-```bash
-CORS_ALLOWED_ORIGINS=http://localhost:5173,https://lokesh15kl.github.io
-```
-
-4. Session cookies across origins
-- If frontend and backend are on different domains and you use session cookies, set:
-```bash
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/career_db?retryWrites=true&w=majority
+MONGODB_DATABASE=career_db
+SMTP_USERNAME=your_new_email@gmail.com
+SMTP_PASSWORD=your_app_password
+HUGGINGFACE_API_KEY=your_hf_key
+CORS_ALLOWED_ORIGINS=https://<your-github-pages-domain>
 SESSION_COOKIE_SAME_SITE=None
 SESSION_COOKIE_SECURE=true
 ```
-- Keep local development as `Lax` and `false`.
-
-5. Backend database URL on Render
-- Set `JDBC_DATABASE_URL` to a JDBC value (must start with `jdbc:`), for example:
+4. Deploy and confirm these backend endpoints are reachable:
 ```bash
-JDBC_DATABASE_URL=jdbc:postgresql://<HOST>:5432/<DB>?sslmode=require
+/api/health
+/api/health/db
 ```
-- Set `DATABASE_USERNAME` and `DATABASE_PASSWORD` to match the DB credentials.
-- `DATABASE_URL` is supported only as a fallback; prefer `JDBC_DATABASE_URL` for reliable startup.
 
-6. OTP email (SMTP) setup
-- OTP sender uses Spring mail config from `backend/src/main/resources/application.properties`:
-```properties
-spring.mail.username=${SMTP_USERNAME:}
-spring.mail.password=${SMTP_PASSWORD:}
-```
-- Add your new email/app password in environment variables (or in `backend/.env.render.example` for template):
+### Frontend on GitHub Pages
+
+1. Copy [.env.production.example](.env.production.example) to `.env.production`.
+2. Set the backend URL:
 ```bash
-SMTP_USERNAME=your_new_email@gmail.com
-SMTP_PASSWORD=your_app_password
+VITE_API_BASE_URL=https://<your-render-service>.onrender.com
 ```
-- Gmail note: use an App Password (not your normal Gmail login password).
+3. Set the GitHub Pages base path:
+```bash
+VITE_BASE_PATH=/
+```
+Use `/` for a user or organization site. Use `/<repo-name>/` for a project page.
+4. Build and deploy:
+```bash
+npm run build
+npm run deploy
+```
+5. If the site cannot reach the backend, confirm `CORS_ALLOWED_ORIGINS` includes the GitHub Pages origin exactly.
+
+### MongoDB for local development
+
+- The backend now defaults to embedded MongoDB for local development so the app runs even when Atlas is unreachable.
+- For production, always use Atlas through `MONGODB_URI`.
 
 ### Preview Production Build
 ```bash

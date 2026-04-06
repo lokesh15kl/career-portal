@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -119,7 +118,6 @@ public class AdminQuizController {
     }
 
     @DeleteMapping("/api/admin/categories/{name}")
-    @Transactional
     public ResponseEntity<?> deleteAdminCategory(@PathVariable("name") String name) {
         String normalized = normalize(name);
         if (normalized.isBlank()) {
@@ -250,7 +248,6 @@ public class AdminQuizController {
     }
 
     @PostMapping("/api/admin/ai/generate-assessment")
-    @Transactional
     public ResponseEntity<?> generateAssessmentWithAi(
             @RequestBody(required = false) Map<String, Object> payload,
             HttpSession session) {
@@ -312,7 +309,6 @@ public class AdminQuizController {
     }
 
     @PostMapping("/api/ai/generate-practice")
-    @Transactional
     public ResponseEntity<?> generatePracticeWithAi(
             @RequestBody(required = false) Map<String, Object> payload,
             HttpSession session) {
@@ -445,7 +441,7 @@ public class AdminQuizController {
         List<ManualQuizQuestion> questions = manualQuizQuestionRepository.findAll().stream()
             .sorted(Comparator.comparing(
                 ManualQuizQuestion::getId,
-                Comparator.nullsFirst(Long::compareTo)))
+                Comparator.nullsFirst(String::compareTo)))
                 .toList();
 
         List<Map<String, Object>> response = new ArrayList<>();
@@ -493,7 +489,7 @@ public class AdminQuizController {
             .filter(item -> normalize(item.getQuizTitle()).equalsIgnoreCase(normalizedQuizTitle))
             .sorted(Comparator.comparing(
                 ManualQuizQuestion::getId,
-                Comparator.nullsFirst(Long::compareTo)))
+                Comparator.nullsFirst(String::compareTo)))
             .toList();
 
         List<Map<String, Object>> response = new ArrayList<>();

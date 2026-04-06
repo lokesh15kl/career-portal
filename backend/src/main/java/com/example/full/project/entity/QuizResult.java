@@ -2,63 +2,42 @@ package com.example.full.project.entity;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "quiz_results")
+@Document(collection = "quiz_results")
 public class QuizResult {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column
-    private Long userId;
+    private String userId;
 
-    @Column(nullable = false, length = 200)
     private String email;
 
-    @Column(nullable = false, length = 150)
     private String category;
 
-    @Column(nullable = false, length = 200)
     private String quizTitle;
 
-    @Column(nullable = false)
     private Integer score;
 
-    @Column(nullable = false)
     private Integer totalQuestions;
 
-    @Column(nullable = false)
-    private LocalDateTime attemptedAt;
+    private LocalDateTime attemptedAt = LocalDateTime.now();
 
-    @PrePersist
-    public void onCreate() {
-        if (attemptedAt == null) {
-            attemptedAt = LocalDateTime.now();
-        }
-    }
-
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(String userId) {
         this.userId = userId;
     }
 

@@ -101,18 +101,16 @@ public class ResultController {
     }
 
     private int scoreAndSave(Map<String, String> form, HttpSession session) {
-        Map<Long, String> answersByQuestionId = new LinkedHashMap<>();
+        Map<String, String> answersByQuestionId = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : form.entrySet()) {
             String key = normalize(entry.getKey());
-            if (!key.matches("q\\d+")) {
+            if (!key.startsWith("q") || key.length() <= 1) {
                 continue;
             }
 
-            try {
-                Long questionId = Long.valueOf(key.substring(1));
+            String questionId = normalize(key.substring(1));
+            if (!questionId.isBlank()) {
                 answersByQuestionId.put(questionId, normalize(entry.getValue()));
-            } catch (NumberFormatException ignored) {
-                // Skip malformed answer keys.
             }
         }
 
@@ -123,7 +121,7 @@ public class ResultController {
         List<ManualQuizQuestion> questions = manualQuizQuestionRepository.findAllById(answersByQuestionId.keySet()).stream()
             .sorted(Comparator.comparing(
                 ManualQuizQuestion::getId,
-                Comparator.nullsFirst(Long::compareTo)))
+                Comparator.nullsFirst(String::compareTo)))
                 .toList();
 
         int totalQuestions = questions.size();
@@ -154,7 +152,8 @@ public class ResultController {
         }
 
         QuizResult result = new QuizResult();
-        result.setUserId((Long) session.getAttribute("userId"));
+        Object sessionUserId = session.getAttribute("userId");
+        result.setUserId(sessionUserId == null ? null : String.valueOf(sessionUserId));
 
         String email = normalize((String) session.getAttribute("userEmail"));
         result.setEmail(email.isBlank() ? "Current user" : email);

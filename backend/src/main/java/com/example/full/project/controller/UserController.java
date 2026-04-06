@@ -36,7 +36,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
+    public ResponseEntity<?> getUserById(@PathVariable String id) {
         return userRepository.findById(id)
                 .<ResponseEntity<?>>map(user -> ResponseEntity.ok(toSafeUser(user)))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody AppUser payload) {
+    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody AppUser payload) {
         AppUser existing = userRepository.findById(id).orElse(null);
         if (existing == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "user not found"));
@@ -82,7 +82,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<?> deleteUser(@PathVariable String id) {
         if (!userRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "user not found"));
         }
