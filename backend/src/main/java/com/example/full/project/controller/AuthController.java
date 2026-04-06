@@ -173,6 +173,7 @@ public class AuthController {
     public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request, HttpSession session) {
         String email = normalize(request.getEmail()).toLowerCase();
         String password = normalize(request.getPassword());
+        String configuredAdminEmail = normalize(System.getenv("APP_ADMIN_EMAIL")).toLowerCase();
 
         List<AppUser> users = userRepository.findAllByEmailIgnoreCaseOrderByIdAsc(email);
         AppUser user = users.stream()
@@ -183,8 +184,14 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "invalid credentials"));
         }
 
-        if (!ROLE_ADMIN.equalsIgnoreCase(normalize(user.getRole()))) {
+        boolean configuredAdmin = !configuredAdminEmail.isBlank() && configuredAdminEmail.equals(email);
+        if (!ROLE_ADMIN.equalsIgnoreCase(normalize(user.getRole())) && !configuredAdmin) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Admin access only"));
+        }
+
+        if (configuredAdmin && !ROLE_ADMIN.equalsIgnoreCase(normalize(user.getRole()))) {
+            user.setRole(ROLE_ADMIN);
+            userRepository.save(user);
         }
 
         setSessionUser(session, user);
