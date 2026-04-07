@@ -10,12 +10,13 @@ const API_BASE_URL = (() => {
     return "";
   }
 
-  return "https://career-portal-backend-umzn.onrender.com";
+  return "https://project-backend-q931.onrender.com";
 })();
 const ADMIN_QUIZ_CATALOG_STORAGE_KEY = "admin_quiz_catalog";
 const MANUAL_QUIZ_QUESTIONS_STORAGE_KEY = "manualQuizQuestions";
 const CAREER_CATALOG_STORAGE_KEY = "admin_career_catalog";
 const CAREER_SECTIONS_STORAGE_KEY = "admin_career_sections";
+const ADMIN_USERS_STORAGE_KEY = "admin_user_registry";
 
 const FALLBACK_QUIZ_TITLES_BY_CATEGORY = {
   Technical: ["Programming Fundamentals", "Web Development Basics", "System Design Basics"],
@@ -180,6 +181,91 @@ function readLocalCareerSections() {
 function writeLocalCareerSections(sections) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(CAREER_SECTIONS_STORAGE_KEY, JSON.stringify(sections));
+}
+
+function readLocalAdminUsers() {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
+  const parsed = parseJsonStorage(raw, []);
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .map((item, index) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const id = normalizeText(item.id || item.email || item.username || `admin-user-${index + 1}`);
+      const name = normalizeText(item.name || item.username || item.email || "User");
+      const email = normalizeText(item.email || item.identifier || item.username || "");
+      const role = normalizeText(item.role || "USER").toUpperCase() || "USER";
+      const createdAt = normalizeText(item.createdAt || item.created_at || new Date().toISOString());
+
+      if (!id && !email && !name) {
+        return null;
+      }
+
+      return { id: id || email || name, name, email, role, createdAt };
+    })
+    .filter(Boolean);
+}
+
+function writeLocalAdminUsers(users) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(users));
+}
+
+function normalizeAdminUser(user, index = 0) {
+  if (!user || typeof user !== "object") return null;
+
+  const id = normalizeText(user.id || user.email || user.username || `admin-user-${index + 1}`);
+  const name = normalizeText(user.name || user.username || user.email || "User");
+  const email = normalizeText(user.email || user.identifier || user.username || "");
+  const role = normalizeText(user.role || "USER").toUpperCase() || "USER";
+  const createdAt = normalizeText(user.createdAt || user.created_at || new Date().toISOString());
+
+  if (!id && !email && !name) return null;
+
+  return {
+    id: id || email || name,
+    name,
+    email,
+    role,
+    createdAt
+  };
+}
+
+function normalizeAdminUserList(data) {
+  if (Array.isArray(data)) {
+    return data.map((item, index) => normalizeAdminUser(item, index)).filter(Boolean);
+  }
+
+  if (Array.isArray(data?.users)) {
+    return data.users.map((item, index) => normalizeAdminUser(item, index)).filter(Boolean);
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data.map((item, index) => normalizeAdminUser(item, index)).filter(Boolean);
+  }
+
+  return [];
+}
+
+async function syncLocalAdminUsersFallback() {
+  const localUsers = readLocalAdminUsers();
+  if (localUsers.length > 0) {
+    return localUsers;
+  }
+
+  const fallback = getLocalScoresFallback().map((item, index) => ({
+    id: item.id || `fallback-user-${index + 1}`,
+    name: item.email || `User ${index + 1}`,
+    email: item.email || `user${index + 1}@example.com`,
+    role: index === 0 ? "ADMIN" : "USER",
+    createdAt: item.attemptedAt || new Date().toISOString()
+  }));
+  writeLocalAdminUsers(fallback);
+  return fallback;
 }
 
 function getLocalCategoryNames() {
@@ -723,6 +809,26 @@ export async function sendOtp({ name, email, password }) {
     },
     body
   });
+}
+
+export async function resendOtp() {
+  const attempts = ["/resendOtp", "/api/auth/resendOtp"];
+
+  let lastError = null;
+  for (const path of attempts) {
+    try {
+      return await request(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(lastError?.message || "Unable to resend OTP.");
 }
 
 export async function registerUser({ name, email, password, role = "USER" }) {
@@ -2098,4 +2204,118 @@ export async function promoteUserToAdmin(identifier) {
   }
 
   throw new Error(lastError?.message || "Unable to promote this user to admin.");
+}
+
+export async function getAdminUsers() {
+  const endpoints = [
+    "/api/admin/users",
+    "/api/users",
+    "/legacy/admin/users",
+    "/legacy/users"
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await request(endpoint);
+      const normalized = normalizeAdminUserList(response);
+      if (normalized.length > 0) {
+        writeLocalAdminUsers(normalized);
+        return normalized;
+      }
+    } catch {
+      // keep trying endpoints
+    }
+  }
+
+  return syncLocalAdminUsersFallback();
+}
+
+export async function updateAdminUser(userId, updates) {
+  const normalizedId = normalizeText(userId);
+  if (!normalizedId) {
+    throw new Error("User id is required.");
+  }
+
+  const normalizedUser = normalizeAdminUser({ id: normalizedId, ...(updates || {}) });
+  if (!normalizedUser) {
+    throw new Error("Name, email, and role are required.");
+  }
+
+  const payload = {
+    id: normalizedUser.id,
+    name: normalizedUser.name,
+    email: normalizedUser.email,
+    username: normalizedUser.email || normalizedUser.name,
+    role: normalizedUser.role,
+    createdAt: normalizedUser.createdAt
+  };
+
+  const attempts = [
+    {
+      path: `/api/admin/users/${encodeURIComponent(normalizedId)}`,
+      options: {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    },
+    {
+      path: `/api/users/${encodeURIComponent(normalizedId)}`,
+      options: {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const response = await request(attempt.path, attempt.options);
+      const normalized = normalizeAdminUser(response || payload) || normalizedUser;
+      const existing = await getAdminUsers();
+      const updated = existing.map((item) => String(item.id) === normalizedId ? normalized : item);
+      writeLocalAdminUsers(updated);
+      return normalized;
+    } catch {
+      // fallback to local below
+    }
+  }
+
+  const existing = await getAdminUsers();
+  const updated = existing.map((item) => String(item.id) === normalizedId ? normalizedUser : item);
+  writeLocalAdminUsers(updated);
+  return normalizedUser;
+}
+
+export async function deleteAdminUser(userId) {
+  const normalizedId = normalizeText(userId);
+  if (!normalizedId) {
+    throw new Error("User id is required.");
+  }
+
+  const attempts = [
+    {
+      path: `/api/admin/users/${encodeURIComponent(normalizedId)}`,
+      options: { method: "DELETE" }
+    },
+    {
+      path: `/api/users/${encodeURIComponent(normalizedId)}`,
+      options: { method: "DELETE" }
+    }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      await request(attempt.path, attempt.options);
+      break;
+    } catch {
+      // fallback to local below
+    }
+  }
+
+  const existing = await getAdminUsers();
+  const updated = existing.filter((item) => String(item.id) !== normalizedId);
+  writeLocalAdminUsers(updated);
+  return updated;
 }

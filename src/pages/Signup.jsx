@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerUser, sendOtp, testBackend, verifyOtp } from "../services/api";
+import { resendOtp, registerUser, sendOtp, testBackend, verifyOtp } from "../services/api";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ export default function Signup() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [checking, setChecking] = useState(true);
   const [backendReady, setBackendReady] = useState(false);
   const [message, setMessage] = useState("");
@@ -42,9 +43,16 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      await sendOtp(form);
+      const response = await sendOtp(form);
+
+      if (response?.otpBypassed) {
+        setMessage(response?.message || "Signup completed.");
+        setTimeout(() => navigate("/login"), 1200);
+        return;
+      }
+
       setStep("otp");
-      setMessage("OTP sent to your email. Enter it below.");
+      setMessage(response?.message || "OTP sent to your email. Enter it below.");
     } catch (sendError) {
       const errorText = String(sendError?.message || "");
       const smtpUnavailable = /failed to send otp email|smtp|app password/i.test(errorText);
@@ -64,6 +72,21 @@ export default function Signup() {
       setError(errorText || "Unable to send OTP");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onResendOtp = async () => {
+    setError("");
+    setMessage("");
+    setResending(true);
+
+    try {
+      const response = await resendOtp();
+      setMessage(response?.message || "OTP resent to your email. Check your inbox.");
+    } catch (resendError) {
+      setError(resendError?.message || "Unable to resend OTP");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -183,6 +206,16 @@ export default function Signup() {
               disabled={loading || !backendReady}
             >
               {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+
+            <button
+              type="button"
+              className="auth-neo-secondary-btn auth-neo-anim"
+              style={{ "--li": 7 }}
+              onClick={onResendOtp}
+              disabled={resending || loading || !backendReady}
+            >
+              {resending ? "Resending..." : "Resend OTP"}
             </button>
           </form>
         )}
