@@ -5791,39 +5791,6 @@ html[data-motion="reduced"][data-cursor="custom"] summary {
   color: #1f3558;
 }
 
-.seb-download-section {
-  background: #f5f8ff;
-  border: 1px solid #d9e3ff;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-.seb-download-label {
-  margin: 0 0 10px 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1f3558;
-}
-
-.btn-seb-download {
-  display: inline-block;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #0f9d8a, #0a7a6a);
-  color: white;
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.btn-seb-download:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 157, 138, 0.3);
-}
-
 .seb-error-actions {
   display: flex;
   gap: 10px;

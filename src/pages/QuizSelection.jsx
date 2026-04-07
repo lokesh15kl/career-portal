@@ -4,7 +4,6 @@ import { getQuizList, logout } from "../services/api";
 import { setLoggedIn, setRole } from "../services/auth";
 import {
   attemptSafeExamBrowserLaunch,
-  buildSafeExamBrowserLaunchUrl,
   buildQuizQuery,
   createQuizKey,
   getSebLaunchCooldownRemainingMs,
@@ -216,18 +215,6 @@ export default function QuizSelection() {
               </div>
               <div className="seb-error-body">
                 <p className="seb-error-text">{sebError}</p>
-                {buildSafeExamBrowserLaunchUrl() && (
-                  <div className="seb-download-section">
-                    <p className="seb-download-label">Download .seb file:</p>
-                    <a 
-                      href={buildSafeExamBrowserLaunchUrl()} 
-                      className="btn-seb-download"
-                      download="quiz.seb"
-                    >
-                      Download SEB Configuration
-                    </a>
-                  </div>
-                )}
               </div>
               <div className="seb-error-actions">
                 <button
