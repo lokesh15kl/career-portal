@@ -73,29 +73,6 @@ npm run dev
 npm run build
 ```
 
-## Deployment
-
-### Backend on Render
-
-1. Create a new Render Web Service from this repository.
-2. Use the Docker deployment path defined in [render.yaml](render.yaml).
-3. Set these Render environment variables:
-```bash
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/career_db?retryWrites=true&w=majority
-MONGODB_DATABASE=career_db
-SMTP_USERNAME=your_new_email@gmail.com
-SMTP_PASSWORD=your_app_password
-HUGGINGFACE_API_KEY=your_hf_key
-CORS_ALLOWED_ORIGINS=https://<your-github-pages-domain>
-SESSION_COOKIE_SAME_SITE=None
-SESSION_COOKIE_SECURE=true
-```
-4. Deploy and confirm these backend endpoints are reachable:
-```bash
-/api/health
-/api/health/db
-```
-
 ### Frontend on GitHub Pages
 
 1. Copy [.env.production.example](.env.production.example) to `.env.production`.
@@ -113,12 +90,7 @@ Use `/` for a user or organization site. Use `/<repo-name>/` for a project page.
 npm run build
 npm run deploy
 ```
-5. If the site cannot reach the backend, confirm `CORS_ALLOWED_ORIGINS` includes the GitHub Pages origin exactly.
-
-### MongoDB for local development
-
-- The backend now defaults to embedded MongoDB for local development so the app runs even when Atlas is unreachable.
-- For production, always use Atlas through `MONGODB_URI`.
+5. If the site cannot reach the backend API, confirm the backend URL is correct and the backend service allows your GitHub Pages origin.
 
 ### Preview Production Build
 ```bash
