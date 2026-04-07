@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getQuizList, logout } from "../services/api";
 import { setLoggedIn, setRole } from "../services/auth";
-import { buildQuizQuery } from "../services/safeExamBrowser";
+import {
+  attemptSafeExamBrowserLaunch,
+  buildSafeExamBrowserLaunchUrl,
+  buildQuizQuery,
+  createQuizKey,
+  getSebLaunchCooldownRemainingMs,
+  isInsideSafeExamBrowser
+} from "../services/safeExamBrowser";
 import ThemeToggle from "../components/ThemeToggle";
 
 const normalizeQuizItem = (item, index) => {
@@ -38,6 +45,8 @@ export default function QuizSelection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedQuizId, setSelectedQuizId] = useState("");
+  const [sebError, setSebError] = useState("");
+  const [pendingQuizTitle, setPendingQuizTitle] = useState("");
 
   useEffect(() => {
     if (!selectedCategory) {
@@ -76,14 +85,67 @@ export default function QuizSelection() {
       return;
     }
 
-    const quizQuery = buildQuizQuery(selectedCategory, quizTitle, "assessment");
+    const launchMode = "assessment";
+    const quizKey = createQuizKey({ category: selectedCategory, quizTitle });
+    const requireSeb = String(import.meta.env.VITE_REQUIRE_SEB ?? "false").toLowerCase() !== "false";
+
+    // If SEB is required and not already inside SEB, try to launch it
+    if (requireSeb && !isInsideSafeExamBrowser(quizKey)) {
+      setPendingQuizTitle(quizTitle);
+      
+      const launched = attemptSafeExamBrowserLaunch({
+        quizKey,
+        category: selectedCategory,
+        quizTitle,
+        mode: launchMode
+      });
+      
+      if (launched) {
+        setSebError("Launching Safe Exam Browser. The .seb file should download and open with SEB. If nothing happens, use the link below to download manually.");
+      } else {
+        const cooldownRemainingMs = getSebLaunchCooldownRemainingMs();
+        if (cooldownRemainingMs > 0) {
+          const waitSeconds = Math.ceil(cooldownRemainingMs / 1000);
+          setSebError(`Please wait ${waitSeconds} seconds before retrying.`);
+        } else {
+          setSebError("Safe Exam Browser could not be launched. You can download the .seb file manually below or continue without SEB protection.");
+        }
+      }
+      return;
+    }
+
+    // Either SEB is not required, or we're already inside SEB - proceed to quiz
+    const quizQuery = buildQuizQuery(selectedCategory, quizTitle, launchMode);
     navigate(`/quiz${quizQuery}`, {
       state: {
         category: selectedCategory,
         quizTitle: quizTitle,
-        launchMode: "assessment"
+        launchMode
       }
     });
+  };
+
+  const onContinueWithoutSeb = () => {
+    if (!pendingQuizTitle) return;
+    
+    const launchMode = "assessment";
+    const quizQuery = buildQuizQuery(selectedCategory, pendingQuizTitle, launchMode);
+    setSebError("");
+    setPendingQuizTitle("");
+    
+    navigate(`/quiz${quizQuery}`, {
+      state: {
+        category: selectedCategory,
+        quizTitle: pendingQuizTitle,
+        launchMode
+      }
+    });
+  };
+
+  const onRetrySebLaunch = () => {
+    if (!pendingQuizTitle) return;
+    setSebError("");
+    onStartQuiz(pendingQuizTitle);
   };
 
   const onLogout = async () => {
@@ -142,6 +204,55 @@ export default function QuizSelection() {
             >
               Back to Categories
             </button>
+          </div>
+        ) : null}
+
+        {sebError ? (
+          <div className="seb-error-modal">
+            <div className="seb-error-backdrop" onClick={() => setSebError("")}></div>
+            <div className="seb-error-dialog">
+              <div className="seb-error-header">
+                <h2>Safe Exam Browser</h2>
+              </div>
+              <div className="seb-error-body">
+                <p className="seb-error-text">{sebError}</p>
+                {buildSafeExamBrowserLaunchUrl() && (
+                  <div className="seb-download-section">
+                    <p className="seb-download-label">Download .seb file:</p>
+                    <a 
+                      href={buildSafeExamBrowserLaunchUrl()} 
+                      className="btn-seb-download"
+                      download="quiz.seb"
+                    >
+                      Download SEB Configuration
+                    </a>
+                  </div>
+                )}
+              </div>
+              <div className="seb-error-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={onRetrySebLaunch}
+                >
+                  Retry SEB Launch
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={onContinueWithoutSeb}
+                >
+                  Continue Without SEB
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setSebError("")}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
 
